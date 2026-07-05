@@ -1,6 +1,9 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 
+const generatePassword = require('../utils/generatePassword');
+const sendEmail = require('../utils/sendEmail');
+
 // POST /api/users - Créer un utilisateur individuellement
 const creerUtilisateur = async(req, res) => {
     try {
@@ -83,17 +86,52 @@ const obtenirUtilisateur = async(req, res) => {
 };
 
 // PUT /api/users/:id/activer - Activer un compte
+// PUT /api/users/:id/activer - Activer un compte avec envoi d'e-mail
 const activerUtilisateur = async(req, res) => {
     try {
-        const user = await User.findByIdAndUpdate(
-            req.params.id, { statut: 'actif' }, { new: true }
-        ).select('-motDePasse');
+        const user = await User.findById(req.params.id);
 
         if (!user) {
             return res.status(404).json({ message: 'Utilisateur non trouvé.' });
         }
 
-        res.status(200).json({ message: 'Compte activé.', user });
+        // Générer un mot de passe temporaire de 8 caractères
+        const motDePasseTemp = generatePassword(8);
+
+        // Hasher le mot de passe temporaire
+        const hash = await bcrypt.hash(motDePasseTemp, 10);
+
+        // Mettre à jour le statut et le mot de passe
+        user.statut = 'actif';
+        user.motDePasse = hash;
+        await user.save();
+
+        // Envoyer l'e-mail avec les informations d'accès
+        const contenuEmail = `
+      <h2>Bienvenue sur la plateforme Billetterie Intelligente</h2>
+      <p>Bonjour <strong>${user.prenom} ${user.nom}</strong>,</p>
+      <p>Votre compte a été activé avec succès.</p>
+      <p>Voici vos informations d'accès :</p>
+      <ul>
+        <li><strong>Email :</strong> ${user.email}</li>
+        <li><strong>Mot de passe temporaire :</strong> ${motDePasseTemp}</li>
+      </ul>
+      <p>Pour des raisons de sécurité, veuillez modifier votre mot de passe lors de votre première connexion.</p>
+      <p>Cordialement,<br>L'équipe Billetterie Intelligente</p>
+    `;
+
+        await sendEmail(user.email, 'Activation de votre compte', contenuEmail);
+
+        res.status(200).json({
+            message: 'Compte activé et e-mail envoyé.',
+            user: {
+                id: user._id,
+                nom: user.nom,
+                prenom: user.prenom,
+                email: user.email,
+                statut: user.statut,
+            },
+        });
     } catch (error) {
         res.status(500).json({ message: 'Erreur serveur.', error: error.message });
     }
@@ -134,14 +172,42 @@ const supprimerUtilisateur = async(req, res) => {
 };
 
 // PUT /api/users/groupe/activer - Activer plusieurs comptes
+// PUT /api/users/groupe/activer - Activer plusieurs comptes avec envoi d'e-mails
 const activerGroupe = async(req, res) => {
     try {
         const { ids } = req.body;
+        let compteur = 0;
 
-        const result = await User.updateMany({ _id: { $in: ids } }, { statut: 'actif' });
+        for (const id of ids) {
+            const user = await User.findById(id);
+
+            if (user && user.statut !== 'actif') {
+                const motDePasseTemp = generatePassword(8);
+                const hash = await bcrypt.hash(motDePasseTemp, 10);
+
+                user.statut = 'actif';
+                user.motDePasse = hash;
+                await user.save();
+
+                const contenuEmail = `
+          <h2>Bienvenue sur la plateforme Billetterie Intelligente</h2>
+          <p>Bonjour <strong>${user.prenom} ${user.nom}</strong>,</p>
+          <p>Votre compte a été activé avec succès.</p>
+          <p>Voici vos informations d'accès :</p>
+          <ul>
+            <li><strong>Email :</strong> ${user.email}</li>
+            <li><strong>Mot de passe temporaire :</strong> ${motDePasseTemp}</li>
+          </ul>
+          <p>Veuillez modifier votre mot de passe lors de votre première connexion.</p>
+        `;
+
+                await sendEmail(user.email, 'Activation de votre compte', contenuEmail);
+                compteur++;
+            }
+        }
 
         res.status(200).json({
-            message: `${result.modifiedCount} compte(s) activé(s).`,
+            message: `${compteur} compte(s) activé(s) et e-mail(s) envoyé(s).`,
         });
     } catch (error) {
         res.status(500).json({ message: 'Erreur serveur.', error: error.message });
