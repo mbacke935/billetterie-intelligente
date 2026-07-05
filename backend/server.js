@@ -14,7 +14,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // Route de test
 app.get('/', (req, res) => {
