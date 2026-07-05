@@ -1,0 +1,13 @@
+@"
+# Node modules
+node_modules/
+
+# Variables d'environnement
+
+
+# Uploads
+backend/uploads/
+
+# Logs
+*.log
+"@ | Out-File -Encoding utf8 .gitignore
