@@ -8,6 +8,7 @@ const User = require('../models/User');
 jest.mock('../utils/sendEmail', () => jest.fn().mockResolvedValue(true));
 
 describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
+    jest.setTimeout(30000); // 30 secondes pour les opérations lentes (Atlas)
     let adminToken;
     let createdUserId;
     const adminEmail = 'admin.test@test.sn';
