@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Ticket, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 const LoginPage = () => {
@@ -95,6 +95,13 @@ const LoginPage = () => {
             )}
           </button>
         </form>
+
+        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)' }}>
+          Pas encore de compte ?{' '}
+          <Link to="/register" style={{ color: 'var(--primary)', fontWeight: '500' }}>
+            S'inscrire
+          </Link>
+        </div>
       </div>
     </div>
   );
