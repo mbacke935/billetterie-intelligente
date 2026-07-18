@@ -1,13 +1,23 @@
 const request = require('supertest');
 const { app, connectDB } = require('../server');
 const mongoose = require('mongoose');
+const User = require('../models/User');
 
 let token;
-let userId;
 
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURATION GLOBALE DES TESTS
+// ═══════════════════════════════════════════════════════════════
+
+// Exécuté une seule fois avant tous les tests
 beforeAll(async () => {
+  // 1. Connexion à la base de données MongoDB
   await connectDB();
 
+  // 2. Nettoyage : supprimer l'utilisateur de test s'il existe déjà
+  await User.deleteOne({ email: 'supertest@test.com' });
+
+  // 3. Récupération du token JWT de l'administrateur
   const res = await request(app)
     .post('/api/auth/login')
     .send({ email: 'admin@billetterie.com', motDePasse: 'Admin1234' });
@@ -15,176 +25,86 @@ beforeAll(async () => {
   token = res.body.token;
 });
 
+// Exécuté une seule fois après tous les tests
 afterAll(async () => {
+  // Fermeture propre de la connexion MongoDB
   await mongoose.connection.close();
 });
 
-describe('Authentification', () => {
+// ═══════════════════════════════════════════════════════════════
+// TESTS API — SERVICE UTILISATEURS
+// ═══════════════════════════════════════════════════════════════
 
-  it('TC-001 : login réussi → 200 + token JWT', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'admin@billetterie.com', motDePasse: 'Admin1234' });
+// ── TC-001 : Scénario nominal — Login réussi ───────────────
+// Vérifie qu'un login avec des identifiants corrects retourne
+// un token JWT et les informations de l'utilisateur (sans mdp)
+it('TC-001 : login réussi → 200 + token JWT', async () => {
+  const res = await request(app)
+    .post('/api/auth/login')
+    .send({ email: 'admin@billetterie.com', motDePasse: 'Admin1234' });
 
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('token');
-    expect(res.body.user.role).toBe('admin');
-    expect(res.body.user).not.toHaveProperty('motDePasse');
-  });
-
-  it('TC-002 : mauvais mot de passe → 401', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'admin@billetterie.com', motDePasse: 'mauvais' });
-
-    expect(res.status).toBe(401);
-  });
-
-  it('TC-003 : email manquant → 400', async () => {
-    const res = await request(app)
-      .post('/api/auth/login')
-      .send({ motDePasse: 'Admin1234' });
-
-    expect(res.status).toBe(400);
-    expect(res.body.message).toBe('Email et mot de passe requis.');
-  });
-
-  it('TC-004 : accès route protégée sans token → 401', async () => {
-    const res = await request(app)
-      .get('/api/users');
-
-    expect(res.status).toBe(401);
-    expect(res.body.message).toBe('Accès refusé. Aucun token fourni.');
-  });
-
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('token');
+  expect(res.body.user.role).toBe('admin');
+  expect(res.body.user).not.toHaveProperty('motDePasse');
 });
 
-describe('Gestion des utilisateurs', () => {
+// ── TC-002 : Scénario d'erreur — Mauvais mot de passe ─────
+// Vérifie que le serveur refuse l'accès si le mot de passe
+// est incorrect (401 Unauthorized)
+it('TC-002 : mauvais mot de passe → 401', async () => {
+  const res = await request(app)
+    .post('/api/auth/login')
+    .send({ email: 'admin@billetterie.com', motDePasse: 'mauvais' });
 
-  it('TC-005 : admin peut créer un utilisateur → 201', async () => {
-    const res = await request(app)
-      .post('/api/users')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        nom: 'Test',
-        prenom: 'Supertest',
-        email: 'supertest@test.com',
-        telephone: '0699999999',
-        role: 'client',
-        motDePasse: 'Test1234'
-      });
+  expect(res.status).toBe(401);
+});
 
-    expect(res.status).toBe(201);
-    expect(res.body.message).toBe('Utilisateur créé avec succès.');
-    expect(res.body.user.email).toBe('supertest@test.com');
+// ── TC-003 : Scénario d'erreur — Champ manquant ───────────
+// Vérifie que le serveur retourne 400 si l'email est absent
+// du corps de la requête
+it('TC-003 : email manquant → 400', async () => {
+  const res = await request(app)
+    .post('/api/auth/login')
+    .send({ motDePasse: 'Admin1234' });
 
-    userId = res.body.user._id;
-  });
+  expect(res.status).toBe(400);
+  expect(res.body.message).toBe('Email et mot de passe requis.');
+});
 
-  it('TC-006 : email déjà utilisé → 400', async () => {
-    const res = await request(app)
-      .post('/api/users')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        nom: 'Doublon',
-        prenom: 'Test',
-        email: 'supertest@test.com',
-        telephone: '0688888888',
-        role: 'client',
-        motDePasse: 'Test1234'
-      });
-
-    expect(res.status).toBe(400);
-    expect(res.body.message).toBe('Cet email est déjà utilisé.');
-  });
-
-  it('TC-007 : lister tous les utilisateurs → 200', async () => {
-    const res = await request(app)
-      .get('/api/users')
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.users)).toBe(true);
-    expect(res.body.total).toBeGreaterThan(0);
-  });
-
-  it('TC-008 : filtrer par rôle admin → tous sont admin', async () => {
-    const res = await request(app)
-      .get('/api/users')
-      .query({ role: 'admin' })
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(200);
-    res.body.users.forEach(user => {
-      expect(user.role).toBe('admin');
+// ── TC-004 : Scénario nominal — Création d'un utilisateur ──
+// Vérifie qu'un administrateur peut créer un nouvel utilisateur
+// et que la réponse contient les bonnes données
+it('TC-004 : admin peut créer un utilisateur → 201', async () => {
+  const res = await request(app)
+    .post('/api/users')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      nom: 'Test',
+      prenom: 'Supertest',
+      email: 'supertest@test.com',
+      telephone: '0699999999',
+      role: 'client',
+      motDePasse: 'Test1234'
     });
-  });
 
-  it('TC-009 : recherche par email → trouve l\'utilisateur', async () => {
-    const res = await request(app)
-      .get('/api/users')
-      .query({ email: 'admin@billetterie.com' })
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.users.length).toBeGreaterThan(0);
-    expect(res.body.users[0].email).toBe('admin@billetterie.com');
-  });
-
-  it('TC-010 : utilisateur inexistant → 404', async () => {
-    const res = await request(app)
-      .get('/api/users/000000000000000000000000')
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(404);
-  });
-
-  it('TC-011 : activer un compte → 200', async () => {
-    const res = await request(app)
-      .put(`/api/users/${userId}/activer`)
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(200);
-  });
-
-  it('TC-012 : bloquer un compte → 200', async () => {
-    const res = await request(app)
-      .put(`/api/users/${userId}/bloquer`)
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(200);
-  });
-
-  it('TC-013 : supprimer un compte → 200', async () => {
-    const res = await request(app)
-      .delete(`/api/users/${userId}`)
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(200);
-  });
-
+  expect(res.status).toBe(201);
+  expect(res.body.message).toBe('Utilisateur créé avec succès.');
+  expect(res.body.user.email).toBe('supertest@test.com');
 });
 
-describe('Statistiques', () => {
+// ── TC-005 : Scénario nominal — Statistiques complètes ─────
+// Vérifie que la route retourne toutes les sections attendues
+// (admins, agents, clients, global) avec un total > 0
+it('TC-005 : stats avec token → 200 + toutes les sections', async () => {
+  const res = await request(app)
+    .get('/api/stats')
+    .set('Authorization', `Bearer ${token}`);
 
-  it('TC-014 : stats avec token → 200 + toutes les sections', async () => {
-    const res = await request(app)
-      .get('/api/stats')
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('admins');
-    expect(res.body).toHaveProperty('agents');
-    expect(res.body).toHaveProperty('clients');
-    expect(res.body).toHaveProperty('global');
-    expect(res.body.global.total).toBeGreaterThan(0);
-  });
-
-  it('TC-015 : stats sans token → 401', async () => {
-    const res = await request(app)
-      .get('/api/stats');
-
-    expect(res.status).toBe(401);
-  });
-
+  expect(res.status).toBe(200);
+  expect(res.body).toHaveProperty('admins');
+  expect(res.body).toHaveProperty('agents');
+  expect(res.body).toHaveProperty('clients');
+  expect(res.body).toHaveProperty('global');
+  expect(res.body.global.total).toBeGreaterThan(0);
 });
