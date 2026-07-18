@@ -72,7 +72,7 @@ const RegisterPage = () => {
                   type="text"
                   name="prenom"
                   className="form-input form-input-icon"
-                  placeholder="Jean"
+                  placeholder="Fatou"
                   value={formData.prenom}
                   onChange={handleChange}
                   required
@@ -88,7 +88,7 @@ const RegisterPage = () => {
                   type="text"
                   name="nom"
                   className="form-input form-input-icon"
-                  placeholder="Dupont"
+                  placeholder="Ndiaye"
                   value={formData.nom}
                   onChange={handleChange}
                   required
@@ -105,7 +105,7 @@ const RegisterPage = () => {
                 type="email"
                 name="email"
                 className="form-input form-input-icon"
-                placeholder="jean.dupont@email.com"
+                placeholder="fatou.ndiaye@email.com"
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -121,7 +121,7 @@ const RegisterPage = () => {
                 type="tel"
                 name="telephone"
                 className="form-input form-input-icon"
-                placeholder="770000000"
+                placeholder="77 123 45 67"
                 value={formData.telephone}
                 onChange={handleChange}
                 required
