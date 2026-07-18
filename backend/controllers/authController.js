@@ -118,4 +118,47 @@ const register = async(req, res) => {
     }
 };
 
-module.exports = { login, logout, register };
+// POST /api/auth/forgot-password
+const forgotPassword = async(req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: 'L\'email est requis.' });
+        }
+
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ message: 'Aucun utilisateur trouvé avec cette adresse email.' });
+        }
+
+        // Générer un mot de passe temporaire de 8 caractères
+        const motDePasseTemp = generatePassword(8);
+        const hash = await bcrypt.hash(motDePasseTemp, 10);
+
+        user.motDePasse = hash;
+        await user.save();
+
+        // Envoyer l'email
+        const contenuEmail = `
+            <h2>Réinitialisation de votre mot de passe</h2>
+            <p>Bonjour <strong>${user.prenom} ${user.nom}</strong>,</p>
+            <p>Vous avez demandé la réinitialisation de votre mot de passe pour l'application Billetterie Intelligente.</p>
+            <p>Voici votre nouveau mot de passe temporaire :</p>
+            <ul>
+                <li><strong>Mot de passe temporaire :</strong> ${motDePasseTemp}</li>
+            </ul>
+            <p>Pour des raisons de sécurité, veuillez modifier ce mot de passe dès votre première connexion.</p>
+            <p>Cordialement,<br>L'équipe Billetterie Intelligente</p>
+        `;
+
+        await sendEmail(user.email, 'Réinitialisation de votre mot de passe', contenuEmail);
+
+        res.status(200).json({ message: 'Un nouveau mot de passe temporaire vous a été envoyé par e-mail.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    }
+};
+
+module.exports = { login, logout, register, forgotPassword };
