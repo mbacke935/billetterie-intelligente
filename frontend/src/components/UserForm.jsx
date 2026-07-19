@@ -8,7 +8,6 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
     email: '',
     telephone: '',
     role: roleDefaut,
-    motDePasse: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -40,6 +39,11 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
           <button className="modal-close" onClick={onClose}>
             <X size={20} />
           </button>
+        </div>
+
+        {/* Info sur l'activation */}
+        <div className="alert alert-info" style={{ margin: '0 0 1rem 0', fontSize: '0.875rem' }}>
+          ℹ️ Le mot de passe sera généré automatiquement lors de l'activation du compte.
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
@@ -95,32 +99,18 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Rôle</label>
-              <select
-                name="role"
-                className="form-input"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="admin">Administrateur</option>
-                <option value="agent">Agent</option>
-                <option value="client">Client</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Mot de passe</label>
-              <input
-                type="password"
-                name="motDePasse"
-                className="form-input"
-                value={formData.motDePasse}
-                onChange={handleChange}
-                required
-                minLength={6}
-              />
-            </div>
+          <div className="form-group">
+            <label className="form-label">Rôle</label>
+            <select
+              name="role"
+              className="form-input"
+              value={formData.role}
+              onChange={handleChange}
+            >
+              <option value="admin">Administrateur</option>
+              <option value="agent">Agent</option>
+              <option value="client">Client</option>
+            </select>
           </div>
 
           <div className="form-actions">

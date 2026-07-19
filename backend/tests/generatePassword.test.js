@@ -10,15 +10,15 @@ const generatePassword = require('../utils/generatePassword');
 
 describe('generatePassword', () => {
 
-  // ── TC-U01 : Longueur du mot de passe ─────────────────────
+  // ── TC-U01 : mot de passe 
   // Vérifie que le mot de passe généré contient exactement
-  // 8 caractères comme demandé dans le cahier des charges
+  // 8 caractères
   it('génère un mot de passe de 8 caractères', () => {
     const pwd = generatePassword(8);
     expect(pwd).toHaveLength(8);
   });
 
-  // ── TC-U02 : Présence de lettres ───────────────────────────
+  // ── TC-U02 : Présence de lettres 
   // Vérifie que le mot de passe contient au moins une lettre
   // (majuscule ou minuscule) pour garantir sa complexité
   it('contient des lettres', () => {

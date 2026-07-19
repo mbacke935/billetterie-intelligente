@@ -5,46 +5,48 @@ const generatePassword = require('../utils/generatePassword');
 const sendEmail = require('../utils/sendEmail');
 
 // POST /api/users - Créer un utilisateur individuellement
-const creerUtilisateur = async(req, res) => {
-    try {
-        const { nom, prenom, email, telephone, role, motDePasse } = req.body;
+const creerUtilisateur = async (req, res) => {
+  try {
+    const { nom, prenom, email, telephone, role } = req.body;
 
-        // Vérifier si l'email existe déjà
-        const emailExiste = await User.findOne({ email });
-        if (emailExiste) {
-            return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
-        }
-
-        // Vérifier si le téléphone existe déjà
-        const telExiste = await User.findOne({ telephone });
-        if (telExiste) {
-            return res.status(400).json({ message: 'Ce numéro de téléphone est déjà utilisé.' });
-        }
-
-        // Hasher le mot de passe
-        const hash = await bcrypt.hash(motDePasse, 10);
-
-        // Créer l'utilisateur
-        const user = await User.create({
-            nom,
-            prenom,
-            email,
-            telephone,
-            role,
-            motDePasse: hash,
-        });
-
-        // Répondre sans le mot de passe
-        const userSansMotDePasse = user.toObject();
-        delete userSansMotDePasse.motDePasse;
-
-        res.status(201).json({
-            message: 'Utilisateur créé avec succès.',
-            user: userSansMotDePasse,
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    // Vérifier si l'email existe déjà
+    const emailExiste = await User.findOne({ email });
+    if (emailExiste) {
+      return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
     }
+
+    // Vérifier si le téléphone existe déjà
+    const telExiste = await User.findOne({ telephone });
+    if (telExiste) {
+      return res.status(400).json({ message: 'Ce numéro de téléphone est déjà utilisé.' });
+    }
+
+    // Générer un mot de passe temporaire par défaut
+    // (sera remplacé lors de l'activation du compte)
+    const motDePasseTemp = generatePassword(8);
+    const hash = await bcrypt.hash(motDePasseTemp, 10);
+
+    // Créer l'utilisateur avec statut bloqué par défaut
+    const user = await User.create({
+      nom,
+      prenom,
+      email,
+      telephone,
+      role,
+      motDePasse: hash,
+      statut: 'bloque',
+    });
+
+    const userSansMotDePasse = user.toObject();
+    delete userSansMotDePasse.motDePasse;
+
+    res.status(201).json({
+      message: 'Utilisateur créé avec succès. Le compte doit être activé par un administrateur.',
+      user: userSansMotDePasse,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+  }
 };
 
 // GET /api/users - Consulter la liste des utilisateurs (avec filtres)
