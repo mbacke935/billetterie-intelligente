@@ -1,4 +1,3 @@
-cat > frontend/src/pages/LoginPage.jsx << 'EOF'
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -145,4 +144,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-EOF
