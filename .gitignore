@@ -1,13 +1,21 @@
-@"
 # Node modules
 node_modules/
+**/node_modules/
 
-# Variables d'environnement
+# Environment variables
+.env
+**/.env
 
+# IDE / System files
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Uploads
+# Uploads and temporary files
 backend/uploads/
-
-# Logs
 *.log
-"@ | Out-File -Encoding utf8 .gitignore
