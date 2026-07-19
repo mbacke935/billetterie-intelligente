@@ -7,6 +7,7 @@ import ChangerMotDePassePage from './pages/ChangerMotDePassePage';
 import AbonnementsPage from './pages/AbonnementsPage';
 import NouvelAbonnementPage from './pages/NouvelAbonnementPage';
 import VoyagesPage from './pages/VoyagesPage';
+import TicketQRCodePage from './pages/TicketQRCodePage';
 
 import LoginPage from './pages/LoginPage';
 
@@ -125,6 +126,16 @@ function App() {
             <ProtectedRoute>
               <AppLayout>
                 <VoyagesPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/abonnements/:id/qrcode"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <TicketQRCodePage />
               </AppLayout>
             </ProtectedRoute>
           }
