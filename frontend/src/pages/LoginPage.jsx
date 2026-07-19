@@ -30,8 +30,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [emailVerifie, setEmailVerifie] = useState(false);
+  const [error, setError] = useState(null); // { field, message }
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -39,37 +38,26 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError(null);
 
     try {
       const data = await login(email, motDePasse);
 
-      // Si c'est la première connexion → changer le mot de passe
-      if (data.premiereConnexion) {
+      // Si c'est la première connexion → rediriger vers changement de mot de passe
+      if (data?.premiereConnexion) {
         navigate('/changer-mot-de-passe');
       } else {
         navigate('/');
       }
     } catch (err) {
-      const message = err.response?.data?.message || 'Erreur de connexion.';
-
-      // Si l'email est incorrect → vider les deux champs
-      if (message.includes('Email ou mot de passe incorrect') && !emailVerifie) {
-        setError('Aucun compte trouvé avec cet email.');
-        setEmail('');
-        setMotDePasse('');
-        setEmailVerifie(false);
-      }
-      // Si le mot de passe est incorrect → garder l'email, vider seulement le mot de passe
-      else {
-        setError('Mot de passe incorrect. Veuillez réessayer.');
-        setMotDePasse('');
-        setEmailVerifie(true);
-      }
+      setError(parseError(err));
     } finally {
       setLoading(false);
     }
   };
+
+  const emailHasError = error?.field === 'both' || error?.field === 'email';
+  const passwordHasError = error?.field === 'both' || error?.field === 'password';
 
   return (
     <div className="login-page">
@@ -88,23 +76,10 @@ const LoginPage = () => {
           <p className="login-subtitle">Connectez-vous à votre espace</p>
         </div>
 
-        {/* Message d'erreur persistant */}
         {error && (
-          <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
-            {error}
-            <button
-              onClick={() => setError('')}
-              style={{
-                float: 'right',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '1rem',
-              }}
-            >
-              ✕
-            </button>
+          <div className="alert alert-error" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+            <span>{error.message}</span>
           </div>
         )}
 
@@ -122,12 +97,7 @@ const LoginPage = () => {
                 className={`form-input form-input-icon${emailHasError ? ' input-error' : ''}`}
                 placeholder="votre@email.com"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  // Si l'utilisateur change l'email, réinitialiser
-                  setEmailVerifie(false);
-                  setError('');
-                }}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
               />
@@ -147,10 +117,7 @@ const LoginPage = () => {
                 className={`form-input form-input-icon${passwordHasError ? ' input-error' : ''}`}
                 placeholder="••••••••"
                 value={motDePasse}
-                onChange={(e) => {
-                  setMotDePasse(e.target.value);
-                  setError('');
-                }}
+                onChange={(e) => setMotDePasse(e.target.value)}
                 required
                 autoComplete="current-password"
               />
@@ -164,11 +131,7 @@ const LoginPage = () => {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary btn-block"
-            disabled={loading}
-          >
+          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
             {loading ? (
               <span className="btn-loading">
                 <span className="btn-spinner" />
