@@ -11,6 +11,7 @@ const AgentsPage = () => {
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -39,6 +40,10 @@ const AgentsPage = () => {
       result = result.filter((u) => u.statut === statusFilter);
     }
 
+    if (roleFilter) {
+      result = result.filter((u) => u.role === roleFilter);
+    }
+
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(
@@ -52,7 +57,7 @@ const AgentsPage = () => {
     }
 
     setFilteredUsers(result);
-  }, [search, statusFilter, users]);
+  }, [search, statusFilter, roleFilter, users]);
 
   const handleCreate = async (data) => {
     await api.post('/users', { ...data, role: 'agent' });
@@ -130,6 +135,19 @@ const AgentsPage = () => {
             <option value="actif">Actif</option>
             <option value="bloque">Bloqué</option>
             <option value="supprime">Supprimé</option>
+          </select>
+        </div>
+        <div className="filter-group">
+          <label className="filter-label">Rôle :</label>
+          <select
+            className="filter-select"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+          >
+            <option value="">Tous</option>
+            <option value="admin">Admin</option>
+            <option value="agent">Agent</option>
+            <option value="client">Client</option>
           </select>
         </div>
       </div>

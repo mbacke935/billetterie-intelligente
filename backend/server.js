@@ -29,15 +29,14 @@ app.get('/', (req, res) => {
   res.json({ message: 'API Billetterie Intelligente fonctionne !' });
 });
 
-// Démarrer le serveur seulement si ce fichier est exécuté directement
-// (pas lors des tests avec Supertest)
-if (require.main === module) {
-  connectDB().then(() => {
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`Serveur démarré sur le port ${PORT}`);
+// Démarrer le serveur seulement si ce n'est pas l'environnement de test
+if (process.env.NODE_ENV !== 'test') {
+    connectDB().then(() => {
+        const PORT = process.env.PORT || 5000;
+        app.listen(PORT, () => {
+            console.log(`Serveur démarré sur le port ${PORT}`);
+        });
     });
-  });
 }
 
-module.exports = { app, connectDB };
+module.exports = app;
