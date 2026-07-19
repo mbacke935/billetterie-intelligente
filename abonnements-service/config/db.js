@@ -23,12 +23,14 @@ const sequelize = new Sequelize(
   }
 );
 
+const logger = require('./logger');
+
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log('Connexion à la base de données MySQL établie avec succès.');
+    logger.info('Connexion à la base de données MySQL établie avec succès.');
   } catch (error) {
-    console.error('Impossible de se connecter à la base de données MySQL :', error);
+    logger.error('Impossible de se connecter à la base de données MySQL :', error);
     process.exit(1);
   }
 };

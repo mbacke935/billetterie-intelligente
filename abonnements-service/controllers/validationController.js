@@ -1,15 +1,16 @@
 const { Abonnement, TypeAbonnement, Voyage, sequelize } = require('../models');
 const crypto = require('crypto');
+const logger = require('../config/logger');
 
 // Valider un abonnement / ticket lors du passage d'un portillon ou d'un contrôle
 exports.validerAbonnement = async (req, res) => {
   const t = await sequelize.transaction();
+  const { abonnement_id } = req.body;
 
   try {
-    const { abonnement_id } = req.body;
-
     if (!abonnement_id) {
       await t.rollback();
+      logger.warn('Tentative de validation sans identifiant d\'abonnement.');
       return res.status(400).json({ message: 'L\'identifiant de l\'abonnement (abonnement_id) est requis.' });
     }
 
@@ -21,6 +22,7 @@ exports.validerAbonnement = async (req, res) => {
 
     if (!abonnement) {
       await t.rollback();
+      logger.warn(`Tentative de validation pour un abonnement inexistant : ${abonnement_id}`);
       return res.status(404).json({ message: 'Abonnement ou ticket non trouvé.' });
     }
 
@@ -30,9 +32,11 @@ exports.validerAbonnement = async (req, res) => {
     // 1. Vérifier si le statut est actif
     if (abonnement.statut !== 'Actif') {
       await t.rollback();
+      const raison = `L'abonnement n'est pas actif. Statut actuel : ${abonnement.statut}`;
+      logger.warn(`Validation REFUSEE pour l'abonnement ${abonnement_id}. Raison : ${raison}`);
       return res.status(403).json({
         statut_validation: 'REFUSE',
-        raison: `L'abonnement n'est pas actif. Statut actuel : ${abonnement.statut}`
+        raison
       });
     }
 
@@ -42,9 +46,11 @@ exports.validerAbonnement = async (req, res) => {
       await abonnement.update({ statut: 'Résilie' }, { transaction: t });
       await t.commit();
 
+      const raison = 'L\'abonnement est expiré. La date de validité est dépassée.';
+      logger.warn(`Validation REFUSEE (EXPIRATION) pour l'abonnement ${abonnement_id}. Statut mis à jour à Résilie.`);
       return res.status(403).json({
         statut_validation: 'REFUSE',
-        raison: 'L\'abonnement est expiré. La date de validité est dépassée.'
+        raison
       });
     }
 
@@ -56,9 +62,11 @@ exports.validerAbonnement = async (req, res) => {
       // Pour les tickets simples ou formules limitées, on vérifie s'il reste des voyages
       if (abonnement.voyages_restants <= 0) {
         await t.rollback();
+        const raison = 'Solde de voyages épuisé. Veuillez recharger ou renouveler votre abonnement.';
+        logger.warn(`Validation REFUSEE (SOLDE EPUISE) pour l'abonnement ${abonnement_id}.`);
         return res.status(403).json({
           statut_validation: 'REFUSE',
-          raison: 'Solde de voyages épuisé. Veuillez recharger ou renouveler votre abonnement.'
+          raison
         });
       }
 
@@ -86,13 +94,15 @@ exports.validerAbonnement = async (req, res) => {
     const validationId = `VAL-${crypto.randomUUID().toUpperCase()}`;
 
     // 5. Enregistrer le voyage dans l'historique
-    const nouveauVoyage = await Voyage.create({
+    await Voyage.create({
       abonnement_id: abonnement.id,
       date_voyage: dateActuelle,
       validation_id: validationId
     }, { transaction: t });
 
     await t.commit();
+
+    logger.info(`Validation REUSSIE pour l'abonnement ${abonnement_id}. Formule : ${type.nom}, Validation ID : ${validationId}`);
 
     res.status(200).json({
       statut_validation: 'VALIDE',
@@ -109,6 +119,7 @@ exports.validerAbonnement = async (req, res) => {
 
   } catch (error) {
     await t.rollback();
+    logger.error(`Erreur interne lors de la validation de l'abonnement ${abonnement_id} :`, error);
     res.status(500).json({
       statut_validation: 'ERREUR',
       message: 'Une erreur interne est survenue lors de la validation.',

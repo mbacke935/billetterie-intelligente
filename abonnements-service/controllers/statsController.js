@@ -1,5 +1,6 @@
 const { Abonnement, TypeAbonnement, Voyage, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const logger = require('../config/logger');
 
 // Récupérer les statistiques globales et indicateurs clés
 exports.getGlobalStats = async (req, res) => {
@@ -74,6 +75,7 @@ exports.getGlobalStats = async (req, res) => {
     });
 
   } catch (error) {
+    logger.error('Erreur lors du calcul des indicateurs statistiques :', error);
     res.status(500).json({ message: 'Erreur lors du calcul des indicateurs statistiques.', error: error.message });
   }
 };

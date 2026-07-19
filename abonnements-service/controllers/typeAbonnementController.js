@@ -1,4 +1,5 @@
 const { TypeAbonnement } = require('../models');
+const logger = require('../config/logger');
 
 // Créer un nouveau type d'abonnement
 exports.createTypeAbonnement = async (req, res) => {
@@ -17,8 +18,10 @@ exports.createTypeAbonnement = async (req, res) => {
       voyages_initiaux: nom === 'Illimité' ? null : voyages_initiaux
     });
 
+    logger.info(`Nouveau type d'abonnement créé : ${nouveauType.nom} (Tarif : ${nouveauType.tarif}€)`);
     res.status(201).json(nouveauType);
   } catch (error) {
+    logger.error('Erreur lors de la création du type d\'abonnement :', error);
     res.status(500).json({ message: 'Erreur lors de la création du type d\'abonnement.', error: error.message });
   }
 };
@@ -29,6 +32,7 @@ exports.getAllTypeAbonnements = async (req, res) => {
     const types = await TypeAbonnement.findAll();
     res.status(200).json(types);
   } catch (error) {
+    logger.error('Erreur lors de la récupération des types d\'abonnement :', error);
     res.status(500).json({ message: 'Erreur lors de la récupération des types d\'abonnement.', error: error.message });
   }
 };
@@ -42,6 +46,7 @@ exports.getTypeAbonnementById = async (req, res) => {
     }
     res.status(200).json(typeAbonnement);
   } catch (error) {
+    logger.error(`Erreur lors de la récupération du type d'abonnement ${req.params.id} :`, error);
     res.status(500).json({ message: 'Erreur lors de la récupération du type d\'abonnement.', error: error.message });
   }
 };
@@ -63,8 +68,10 @@ exports.updateTypeAbonnement = async (req, res) => {
       voyages_initiaux: nom === 'Illimité' ? null : (voyages_initiaux !== undefined ? voyages_initiaux : typeAbonnement.voyages_initiaux)
     });
 
+    logger.info(`Type d'abonnement ${req.params.id} mis à jour avec succès.`);
     res.status(200).json(typeAbonnement);
   } catch (error) {
+    logger.error(`Erreur lors de la mise à jour du type d'abonnement ${req.params.id} :`, error);
     res.status(500).json({ message: 'Erreur lors de la mise à jour du type d\'abonnement.', error: error.message });
   }
 };
@@ -78,12 +85,14 @@ exports.deleteTypeAbonnement = async (req, res) => {
     }
 
     await typeAbonnement.destroy();
+    logger.info(`Type d'abonnement ${req.params.id} supprimé avec succès.`);
     res.status(200).json({ message: 'Type d\'abonnement supprimé avec succès.' });
   } catch (error) {
-    // Gère le cas où des abonnements y sont liés
     if (error.name === 'SequelizeForeignKeyConstraintError') {
+      logger.warn(`Impossible de supprimer le type d'abonnement ${req.params.id} car des abonnements y sont associés.`);
       return res.status(400).json({ message: 'Impossible de supprimer ce type d\'abonnement car des abonnements y sont associés.' });
     }
+    logger.error(`Erreur lors de la suppression du type d'abonnement ${req.params.id} :`, error);
     res.status(500).json({ message: 'Erreur lors de la suppression du type d\'abonnement.', error: error.message });
   }
 };

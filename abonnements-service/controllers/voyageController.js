@@ -1,4 +1,5 @@
 const { Voyage, Abonnement, TypeAbonnement } = require('../models');
+const logger = require('../config/logger');
 
 // Récupérer l'historique complet des consommations de voyages pour un utilisateur (via son user_id)
 exports.getVoyagesByUser = async (req, res) => {
@@ -39,6 +40,7 @@ exports.getVoyagesByUser = async (req, res) => {
 
     res.status(200).json(voyages);
   } catch (error) {
+    logger.error(`Erreur lors de la récupération des voyages pour l'utilisateur ${req.params.user_id} :`, error);
     res.status(500).json({ message: 'Erreur lors de la récupération de l\'historique des voyages de l\'utilisateur.', error: error.message });
   }
 };
@@ -60,6 +62,7 @@ exports.getVoyagesByAbonnement = async (req, res) => {
 
     res.status(200).json(voyages);
   } catch (error) {
+    logger.error(`Erreur lors de la récupération des voyages pour l'abonnement ${req.params.abonnement_id} :`, error);
     res.status(500).json({ message: 'Erreur lors de la récupération de l\'historique des voyages de l\'abonnement.', error: error.message });
   }
 };

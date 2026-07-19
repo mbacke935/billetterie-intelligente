@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const { connectDB, sequelize } = require('./config/db');
 const { TypeAbonnement } = require('./models');
+const logger = require('./config/logger');
 
 const app = express();
 
@@ -11,6 +12,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Middleware de journalisation des requêtes HTTP
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`, {
+      method: req.method,
+      url: req.originalUrl,
+      status: res.statusCode,
+      duration
+    });
+  });
+  next();
+});
 
 // Importation des routes
 const typeAbonnementRoutes = require('./routes/typeAbonnementRoutes');
@@ -43,7 +59,7 @@ const seedDefaultData = async () => {
   try {
     const count = await TypeAbonnement.count();
     if (count === 0) {
-      console.log('Seeding des formules d\'abonnement par défaut...');
+      logger.info('Seeding des formules d\'abonnement par défaut...');
       await TypeAbonnement.bulkCreate([
         {
           nom: 'Ticket simple',
@@ -64,10 +80,10 @@ const seedDefaultData = async () => {
           voyages_initiaux: null
         }
       ]);
-      console.log('Formules d\'abonnement créées avec succès.');
+      logger.info('Formules d\'abonnement créées avec succès.');
     }
   } catch (error) {
-    console.error('Erreur lors du seeding des données par défaut :', error);
+    logger.error('Erreur lors du seeding des données par défaut :', error);
   }
 };
 
@@ -80,16 +96,16 @@ if (process.env.NODE_ENV !== 'test') {
 
       // Synchronisation des tables (création si non existantes)
       await sequelize.sync({ alter: true });
-      console.log('Modèles Sequelize synchronisés avec la base de données.');
+      logger.info('Modèles Sequelize synchronisés avec la base de données.');
 
       // Remplir les données par défaut si nécessaire
       await seedDefaultData();
 
       app.listen(PORT, () => {
-        console.log(`Le Service Abonnements écoute sur le port ${PORT}`);
+        logger.info(`Le Service Abonnements écoute sur le port ${PORT}`);
       });
     } catch (error) {
-      console.error('Échec du démarrage du serveur :', error);
+      logger.error('Échec du démarrage du serveur :', error);
       process.exit(1);
     }
   };
