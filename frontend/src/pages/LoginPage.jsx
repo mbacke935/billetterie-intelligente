@@ -1,37 +1,63 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import { Ticket, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Ticket, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+
+// Traduit les codes d'erreur du backend en messages clairs et cible le champ concerné
+const parseError = (err) => {
+  const message = err.response?.data?.message || '';
+  const status = err.response?.status;
+
+  if (status === 400) {
+    return { field: 'both', message: 'Veuillez renseigner l\'email et le mot de passe.' };
+  }
+  if (message.toLowerCase().includes('email') && message.toLowerCase().includes('mot de passe')) {
+    return { field: 'both', message: 'Email ou mot de passe incorrect. Vérifiez vos informations.' };
+  }
+  if (message.toLowerCase().includes('supprimé') || message.toLowerCase().includes('supprime')) {
+    return { field: null, message: 'Ce compte a été supprimé. Contactez un administrateur.' };
+  }
+  if (message.toLowerCase().includes('bloqué') || message.toLowerCase().includes('bloque')) {
+    return { field: null, message: 'Votre compte est bloqué. Contactez un administrateur.' };
+  }
+  if (!err.response) {
+    return { field: null, message: 'Impossible de joindre le serveur. Vérifiez votre connexion.' };
+  }
+  return { field: null, message: message || 'Une erreur est survenue. Réessayez.' };
+};
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null); // { field, message }
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-  try {
-    const data = await login(email, motDePasse);
+    try {
+      const data = await login(email, motDePasse);
 
-    // Si c'est la première connexion → rediriger vers changement de mot de passe
-    if (data.premiereConnexion) {
-      navigate('/changer-mot-de-passe');
-    } else {
-      navigate('/');
+      // Si c'est la première connexion → rediriger vers changement de mot de passe
+      if (data?.premiereConnexion) {
+        navigate('/changer-mot-de-passe');
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      setError(parseError(err));
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError(err.response?.data?.message || 'Erreur de connexion.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  const emailHasError = error?.field === 'both' || error?.field === 'email';
+  const passwordHasError = error?.field === 'both' || error?.field === 'password';
 
   return (
     <div className="login-page">
@@ -50,40 +76,50 @@ const LoginPage = () => {
           <p className="login-subtitle">Connectez-vous à votre espace</p>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && (
+          <div className="alert alert-error" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '1px' }} />
+            <span>{error.message}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
             <label className="form-label">Email</label>
             <div className="input-icon-wrapper">
-              <Mail size={18} className="input-icon" />
+              <Mail
+                size={18}
+                className="input-icon"
+                style={{ color: emailHasError ? 'var(--danger)' : undefined }}
+              />
               <input
                 type="email"
-                className="form-input form-input-icon"
+                className={`form-input form-input-icon${emailHasError ? ' input-error' : ''}`}
                 placeholder="votre@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
               />
             </div>
           </div>
 
           <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label className="form-label" style={{ marginBottom: 0 }}>Mot de passe</label>
-              <Link to="/forgot-password" style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: '500' }}>
-                Mot de passe oublié ?
-              </Link>
-            </div>
+            <label className="form-label">Mot de passe</label>
             <div className="input-icon-wrapper">
-              <Lock size={18} className="input-icon" />
+              <Lock
+                size={18}
+                className="input-icon"
+                style={{ color: passwordHasError ? 'var(--danger)' : undefined }}
+              />
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="form-input form-input-icon"
+                className={`form-input form-input-icon${passwordHasError ? ' input-error' : ''}`}
                 placeholder="••••••••"
                 value={motDePasse}
                 onChange={(e) => setMotDePasse(e.target.value)}
                 required
+                autoComplete="current-password"
               />
               <button
                 type="button"
@@ -106,13 +142,6 @@ const LoginPage = () => {
             )}
           </button>
         </form>
-
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Pas encore de compte ?{' '}
-          <Link to="/register" style={{ color: 'var(--primary)', fontWeight: '500' }}>
-            S'inscrire
-          </Link>
-        </div>
       </div>
     </div>
   );

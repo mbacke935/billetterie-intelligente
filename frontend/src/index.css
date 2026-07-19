@@ -786,6 +786,16 @@ select.form-input {
   cursor: pointer;
 }
 
+.input-error {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+}
+
+.input-error:focus {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35) !important;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
