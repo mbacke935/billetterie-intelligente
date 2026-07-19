@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import ChangerMotDePassePage from './pages/ChangerMotDePassePage';
 
 import LoginPage from './pages/LoginPage';
+
 import DashboardPage from './pages/DashboardPage';
 import AdminsPage from './pages/AdminsPage';
 import AgentsPage from './pages/AgentsPage';
@@ -32,8 +33,9 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Route publique */}
+          {/* Routes publiques */}
           <Route path="/login" element={<LoginPage />} />
+
 
           {/* Routes protégées */}
           <Route

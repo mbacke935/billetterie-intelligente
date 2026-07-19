@@ -1,38 +1,33 @@
 const generatePassword = require('../utils/generatePassword');
 
-// ═══════════════════════════════════════════════════════════════
-// TEST UNITAIRE — generatePassword()
-// Fichier : utils/generatePassword.js
-// Objectif : vérifier que la fonction génère correctement
-//            un mot de passe aléatoire de 8 caractères
-// Type de test : unitaire (pas besoin de base de données)
-// ═══════════════════════════════════════════════════════════════
+describe('Test unitaire - generatePassword', () => {
+    test('devrait générer un mot de passe de 8 caractères par défaut', () => {
+        const password = generatePassword();
+        expect(password).toBeDefined();
+        expect(password).toHaveLength(8);
+        expect(typeof password).toBe('string');
+    });
 
-describe('generatePassword', () => {
+    test('devrait générer un mot de passe de la longueur spécifiée', () => {
+        const lengths = [5, 12, 16, 20];
+        lengths.forEach(len => {
+            const password = generatePassword(len);
+            expect(password).toHaveLength(len);
+        });
+    });
 
-  // ── TC-U01 : mot de passe 
-  // Vérifie que le mot de passe généré contient exactement
-  // 8 caractères
-  it('génère un mot de passe de 8 caractères', () => {
-    const pwd = generatePassword(8);
-    expect(pwd).toHaveLength(8);
-  });
+    test('devrait uniquement contenir des caractères autorisés', () => {
+        const caracteresAutorises = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$!';
+        const password = generatePassword(50);
+        
+        for (let i = 0; i < password.length; i++) {
+            expect(caracteresAutorises.includes(password[i])).toBe(true);
+        }
+    });
 
-  // ── TC-U02 : Présence de lettres 
-  // Vérifie que le mot de passe contient au moins une lettre
-  // (majuscule ou minuscule) pour garantir sa complexité
-  it('contient des lettres', () => {
-    const pwd = generatePassword(8);
-    expect(/[A-Za-z]/.test(pwd)).toBe(true);
-  });
-
-  // ── TC-U03 : Caractère aléatoire ───────────────────────────
-  // Vérifie que deux appels successifs ne produisent pas
-  // le même mot de passe (aléatoire à chaque génération)
-  it('deux appels donnent des résultats différents', () => {
-    const pwd1 = generatePassword(8);
-    const pwd2 = generatePassword(8);
-    expect(pwd1).not.toBe(pwd2);
-  });
-
+    test('devrait générer des mots de passe différents à chaque appel', () => {
+        const pwd1 = generatePassword();
+        const pwd2 = generatePassword();
+        expect(pwd1).not.toBe(pwd2);
+    });
 });
