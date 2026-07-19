@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShieldCheck, UserCog, Users, UserCircle } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, UserCog, Users, UserCircle, CreditCard, MapPin } from 'lucide-react';
 
 const Sidebar = () => {
   const menuItems = [
@@ -7,6 +7,8 @@ const Sidebar = () => {
     { path: '/admins', label: 'Administrateurs', icon: ShieldCheck },
     { path: '/agents', label: 'Agents', icon: UserCog },
     { path: '/clients', label: 'Clients', icon: Users },
+    { path: '/abonnements', label: 'Abonnements', icon: CreditCard },
+    { path: '/voyages', label: 'Voyages', icon: MapPin },
     { path: '/profile', label: 'Mon Profil', icon: UserCircle },
   ];
 

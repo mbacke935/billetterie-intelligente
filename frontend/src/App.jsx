@@ -4,6 +4,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import ChangerMotDePassePage from './pages/ChangerMotDePassePage';
+import AbonnementsPage from './pages/AbonnementsPage';
+import NouvelAbonnementPage from './pages/NouvelAbonnementPage';
+import VoyagesPage from './pages/VoyagesPage';
 
 import LoginPage from './pages/LoginPage';
 
@@ -96,6 +99,36 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+          path="/abonnements"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <AbonnementsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/abonnements/nouveau"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <NouvelAbonnementPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/voyages"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <VoyagesPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
