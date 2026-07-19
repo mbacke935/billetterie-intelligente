@@ -71,28 +71,31 @@ const seedDefaultData = async () => {
   }
 };
 
-// Démarrage du serveur et synchronisation BDD
-const startServer = async () => {
-  try {
-    // Connexion à MySQL
-    await connectDB();
+// Démarrage du serveur et synchronisation BDD (seulement si ce n'est pas le mode test)
+if (process.env.NODE_ENV !== 'test') {
+  const startServer = async () => {
+    try {
+      // Connexion à MySQL
+      await connectDB();
 
-    // Synchronisation des tables (création si non existantes)
-    await sequelize.sync({ alter: true });
-    console.log('Modèles Sequelize synchronisés avec la base de données.');
+      // Synchronisation des tables (création si non existantes)
+      await sequelize.sync({ alter: true });
+      console.log('Modèles Sequelize synchronisés avec la base de données.');
 
-    // Remplir les données par défaut si nécessaire
-    await seedDefaultData();
+      // Remplir les données par défaut si nécessaire
+      await seedDefaultData();
 
-    app.listen(PORT, () => {
-      console.log(`Le Service Abonnements écoute sur le port ${PORT}`);
-    });
-  } catch (error) {
-    console.error('Échec du démarrage du serveur :', error);
-    process.exit(1);
-  }
-};
+      app.listen(PORT, () => {
+        console.log(`Le Service Abonnements écoute sur le port ${PORT}`);
+      });
+    } catch (error) {
+      console.error('Échec du démarrage du serveur :', error);
+      process.exit(1);
+    }
+  };
 
-startServer();
+  startServer();
+}
 
-module.exports = app;
+module.exports = { app, seedDefaultData };
+
