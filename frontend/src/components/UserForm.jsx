@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
+const roleLabels = {
+  admin: 'Administrateur',
+  agent: 'Agent',
+  client: 'Client',
+};
+
 const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
   const [formData, setFormData] = useState({
     nom: '',
@@ -99,18 +105,16 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
             </div>
           </div>
 
+          {/* Rôle en lecture seule — déterminé par la page */}
           <div className="form-group">
             <label className="form-label">Rôle</label>
-            <select
-              name="role"
+            <input
+              type="text"
               className="form-input"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="admin">Administrateur</option>
-              <option value="agent">Agent</option>
-              <option value="client">Client</option>
-            </select>
+              value={roleLabels[roleDefaut]}
+              readOnly
+              style={{ backgroundColor: 'var(--bg-secondary, #f1f5f9)', cursor: 'not-allowed', opacity: 0.8 }}
+            />
           </div>
 
           <div className="form-actions">
