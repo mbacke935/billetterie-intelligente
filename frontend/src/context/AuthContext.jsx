@@ -29,16 +29,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, motDePasse) => {
-    const response = await api.post('/auth/login', { email, motDePasse });
-    const { token: newToken, user: newUser } = response.data;
+  const response = await api.post('/auth/login', { email, motDePasse });
+  const { token: newToken, user: newUser, premiereConnexion } = response.data;
 
-    setToken(newToken);
-    setUser(newUser);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
+  setToken(newToken);
+  setUser(newUser);
+  localStorage.setItem('token', newToken);
+  localStorage.setItem('user', JSON.stringify(newUser));
 
-    return response.data;
-  };
+  return response.data;
+};
 
   const logout = async () => {
     try {

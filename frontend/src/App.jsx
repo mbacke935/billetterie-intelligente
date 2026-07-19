@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import ChangerMotDePassePage from './pages/ChangerMotDePassePage';
 
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -82,6 +83,14 @@ function App() {
                 <AppLayout>
                   <ProfilePage />
                 </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/changer-mot-de-passe"
+            element={
+              <ProtectedRoute>
+                <ChangerMotDePassePage />
               </ProtectedRoute>
             }
           />

@@ -5,9 +5,9 @@ const User = require('../models/User');
 
 let token;
 
-// ═══════════════════════════════════════════════════════════════
+
 // CONFIGURATION GLOBALE DES TESTS
-// ═══════════════════════════════════════════════════════════════
+
 
 // Exécuté une seule fois avant tous les tests
 beforeAll(async () => {
