@@ -1,7 +1,30 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Ticket, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Ticket, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+
+// Traduit les codes d'erreur du backend en messages clairs et cible le champ concerné
+const parseError = (err) => {
+  const message = err.response?.data?.message || '';
+  const status = err.response?.status;
+
+  if (status === 400) {
+    return { field: 'both', message: 'Veuillez renseigner l\'email et le mot de passe.' };
+  }
+  if (message.toLowerCase().includes('email') && message.toLowerCase().includes('mot de passe')) {
+    return { field: 'both', message: 'Email ou mot de passe incorrect. Vérifiez vos informations.' };
+  }
+  if (message.toLowerCase().includes('supprimé') || message.toLowerCase().includes('supprime')) {
+    return { field: null, message: 'Ce compte a été supprimé. Contactez un administrateur.' };
+  }
+  if (message.toLowerCase().includes('bloqué') || message.toLowerCase().includes('bloque')) {
+    return { field: null, message: 'Votre compte est bloqué. Contactez un administrateur.' };
+  }
+  if (!err.response) {
+    return { field: null, message: 'Impossible de joindre le serveur. Vérifiez votre connexion.' };
+  }
+  return { field: null, message: message || 'Une erreur est survenue. Réessayez.' };
+};
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -89,10 +112,14 @@ const LoginPage = () => {
           <div className="form-group">
             <label className="form-label">Email</label>
             <div className="input-icon-wrapper">
-              <Mail size={18} className="input-icon" />
+              <Mail
+                size={18}
+                className="input-icon"
+                style={{ color: emailHasError ? 'var(--danger)' : undefined }}
+              />
               <input
                 type="email"
-                className="form-input form-input-icon"
+                className={`form-input form-input-icon${emailHasError ? ' input-error' : ''}`}
                 placeholder="votre@email.com"
                 value={email}
                 onChange={(e) => {
@@ -102,6 +129,7 @@ const LoginPage = () => {
                   setError('');
                 }}
                 required
+                autoComplete="email"
               />
             </div>
           </div>
@@ -109,10 +137,14 @@ const LoginPage = () => {
           <div className="form-group">
             <label className="form-label">Mot de passe</label>
             <div className="input-icon-wrapper">
-              <Lock size={18} className="input-icon" />
+              <Lock
+                size={18}
+                className="input-icon"
+                style={{ color: passwordHasError ? 'var(--danger)' : undefined }}
+              />
               <input
                 type={showPassword ? 'text' : 'password'}
-                className="form-input form-input-icon"
+                className={`form-input form-input-icon${passwordHasError ? ' input-error' : ''}`}
                 placeholder="••••••••"
                 value={motDePasse}
                 onChange={(e) => {
@@ -120,6 +152,7 @@ const LoginPage = () => {
                   setError('');
                 }}
                 required
+                autoComplete="current-password"
               />
               <button
                 type="button"
