@@ -13,19 +13,25 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  e.preventDefault();
+  setLoading(true);
+  setError('');
 
-    try {
-      await login(email, motDePasse);
+  try {
+    const data = await login(email, motDePasse);
+
+    // Si c'est la première connexion → rediriger vers changement de mot de passe
+    if (data.premiereConnexion) {
+      navigate('/changer-mot-de-passe');
+    } else {
       navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erreur de connexion.');
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    setError(err.response?.data?.message || 'Erreur de connexion.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="login-page">
