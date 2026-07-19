@@ -1,50 +1,56 @@
-import { useState } from 'react';
-import { RefreshCw, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
 import VoyagesTable from '../components/VoyagesTable';
-
-// Données fictives en attendant le backend de MS
-const voyagesFictifs = [
-  {
-    id: 1,
-    client: 'Diop Moussa',
-    typeAbonnement: 'Abonnement Limité',
-    dateVoyage: '2026-07-19 08:32',
-    idValidation: 'VAL-001',
-  },
-  {
-    id: 2,
-    client: 'Ndiaye Fatou',
-    typeAbonnement: 'Abonnement Illimité',
-    dateVoyage: '2026-07-19 09:15',
-    idValidation: 'VAL-002',
-  },
-  {
-    id: 3,
-    client: 'Ba Ibrahima',
-    typeAbonnement: 'Ticket Simple',
-    dateVoyage: '2026-07-19 10:05',
-    idValidation: 'VAL-003',
-  },
-  {
-    id: 4,
-    client: 'Diop Moussa',
-    typeAbonnement: 'Abonnement Limité',
-    dateVoyage: '2026-07-18 17:45',
-    idValidation: 'VAL-004',
-  },
-  {
-    id: 5,
-    client: 'Ndiaye Fatou',
-    typeAbonnement: 'Abonnement Illimité',
-    dateVoyage: '2026-07-18 08:22',
-    idValidation: 'VAL-005',
-  },
-];
+import { getVoyagesByUser } from '../services/apiAbonnements';
+import api from '../services/api';
 
 const VoyagesPage = () => {
-  const [voyages] = useState(voyagesFictifs);
+  const [voyages, setVoyages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [error, setError] = useState('');
+
+  const fetchVoyages = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // Récupérer tous les clients
+      const clientsRes = await api.get('/users', { params: { role: 'client' } });
+      const clients = clientsRes.data.users;
+
+      // Récupérer les voyages de chaque client
+      const allVoyages = [];
+      for (const client of clients) {
+        try {
+          const res = await getVoyagesByUser(client._id);
+          const voyagesClient = res.data.map((v) => ({
+            id: v.id,
+            client: `${client.prenom} ${client.nom}`,
+            typeAbonnement: v.abonnement?.typeAbonnement?.nom || 'N/A',
+            dateVoyage: new Date(v.date_consommation).toLocaleString('fr-FR'),
+            idValidation: `VAL-${String(v.id).padStart(3, '0')}`,
+          }));
+          allVoyages.push(...voyagesClient);
+        } catch {
+          // Ce client n'a pas de voyages
+        }
+      }
+
+      // Trier par date décroissante
+      allVoyages.sort((a, b) => new Date(b.dateVoyage) - new Date(a.dateVoyage));
+      setVoyages(allVoyages);
+    } catch (err) {
+      setError('Impossible de charger les voyages.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVoyages();
+  }, []);
 
   const filtered = voyages.filter((v) => {
     const matchSearch = search
@@ -52,7 +58,7 @@ const VoyagesPage = () => {
         v.idValidation.toLowerCase().includes(search.toLowerCase())
       : true;
     const matchDate = dateFilter
-      ? v.dateVoyage.startsWith(dateFilter)
+      ? v.dateVoyage.includes(dateFilter)
       : true;
     return matchSearch && matchDate;
   });
@@ -65,17 +71,23 @@ const VoyagesPage = () => {
           <p className="page-subtitle">Suivi de toutes les validations de voyage</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-secondary">
+          <button className="btn btn-secondary" onClick={fetchVoyages}>
             <RefreshCw size={16} /> Actualiser
           </button>
         </div>
       </div>
 
+      {error && (
+        <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+          {error}
+        </div>
+      )}
+
       {/* Stats rapides */}
       <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
         {[
           { label: 'Total voyages', count: voyages.length, color: '#1C7293' },
-          { label: 'Aujourd\'hui', count: voyages.filter(v => v.dateVoyage.startsWith('2026-07-19')).length, color: '#02C39A' },
+          { label: 'Aujourd\'hui', count: voyages.filter(v => v.dateVoyage.includes(new Date().toLocaleDateString('fr-FR'))).length, color: '#02C39A' },
           { label: 'Cette semaine', count: voyages.length, color: '#21295C' },
         ].map((s) => (
           <div key={s.label} className="stats-card" style={{ borderLeft: `4px solid ${s.color}` }}>
@@ -90,7 +102,6 @@ const VoyagesPage = () => {
       {/* Filtres */}
       <div className="filters-container">
         <div className="search-bar">
-          <MapPin size={18} className="search-bar-icon" />
           <input
             type="text"
             className="search-bar-input"
@@ -111,7 +122,14 @@ const VoyagesPage = () => {
       </div>
 
       {/* Tableau */}
-      <VoyagesTable voyages={filtered} />
+      {loading ? (
+        <div className="page-loading">
+          <div className="loading-spinner" />
+          <p>Chargement des voyages...</p>
+        </div>
+      ) : (
+        <VoyagesTable voyages={filtered} />
+      )}
     </div>
   );
 };

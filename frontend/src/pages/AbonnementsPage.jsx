@@ -1,78 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AbonnementCard from '../components/AbonnementCard';
+import {
+  getAbonnementsByUser,
+  suspendreAbonnement,
+  resilierAbonnement,
+  renouvelerAbonnement,
+} from '../services/apiAbonnements';
+import api from '../services/api';
 
-// Données fictives en attendant le backend de MS
-const abonnementsFictifs = [
-  {
-    id: 1,
-    client: 'Diop Moussa',
-    email: 'moussa.diop@test.com',
-    type: 'ticket_simple',
-    statut: 'actif',
-    dateDebut: '2026-07-01',
-    dateExpiration: '2026-07-31',
-    voyagesAutorises: 1,
-    voyagesConsommes: 0,
-    voyagesRestants: 1,
-  },
-  {
-    id: 2,
-    client: 'Ndiaye Fatou',
-    email: 'fatou.ndiaye@test.com',
-    type: 'abonnement_limite',
-    statut: 'actif',
-    dateDebut: '2026-07-01',
-    dateExpiration: '2026-07-31',
-    voyagesAutorises: 20,
-    voyagesConsommes: 8,
-    voyagesRestants: 12,
-  },
-  {
-    id: 3,
-    client: 'Ba Ibrahima',
-    email: 'ibrahima.ba@test.com',
-    type: 'abonnement_illimite',
-    statut: 'actif',
-    dateDebut: '2026-07-01',
-    dateExpiration: '2026-07-31',
-    voyagesAutorises: null,
-    voyagesConsommes: 15,
-    voyagesRestants: null,
-  },
-  {
-    id: 4,
-    client: 'Sow Aminata',
-    email: 'aminata.sow@test.com',
-    type: 'abonnement_limite',
-    statut: 'suspendu',
-    dateDebut: '2026-06-01',
-    dateExpiration: '2026-06-30',
-    voyagesAutorises: 10,
-    voyagesConsommes: 10,
-    voyagesRestants: 0,
-  },
-  {
-    id: 5,
-    client: 'Fall Cheikh',
-    email: 'cheikh.fall@test.com',
-    type: 'abonnement_illimite',
-    statut: 'resilié',
-    dateDebut: '2026-05-01',
-    dateExpiration: '2026-05-31',
-    voyagesAutorises: null,
-    voyagesConsommes: 22,
-    voyagesRestants: null,
-  },
-];
+// Mapper les statuts du backend vers le frontend
+const statutMap = {
+  'Actif': 'actif',
+  'Suspendu': 'suspendu',
+  'Résilie': 'resilié',
+};
+
+// Mapper les noms de types vers les clés frontend
+const typeMap = {
+  'Ticket simple': 'ticket_simple',
+  'Limité': 'abonnement_limite',
+  'Illimité': 'abonnement_illimite',
+};
 
 const AbonnementsPage = () => {
   const navigate = useNavigate();
-  const [abonnements, setAbonnements] = useState(abonnementsFictifs);
+  const [abonnements, setAbonnements] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [statutFilter, setStatutFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
+
+  const fetchClients = async () => {
+    try {
+      const res = await api.get('/users', { params: { role: 'client' } });
+      return res.data.users;
+    } catch {
+      return [];
+    }
+  };
+
+  const fetchAbonnements = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // Récupérer tous les clients
+      const clientsList = await fetchClients();
+      setClients(clientsList);
+
+      // Récupérer les abonnements de chaque client
+      const allAbonnements = [];
+      for (const client of clientsList) {
+        try {
+          const res = await getAbonnementsByUser(client._id);
+          const abonnementsClient = res.data.map((a) => ({
+            id: a.id,
+            client: `${client.prenom} ${client.nom}`,
+            email: client.email,
+            type: typeMap[a.typeAbonnement?.nom] || 'ticket_simple',
+            statut: statutMap[a.statut] || 'actif',
+            dateDebut: a.date_debut?.split('T')[0],
+            dateExpiration: a.date_expiration?.split('T')[0],
+            voyagesAutorises: a.typeAbonnement?.voyages_initiaux,
+            voyagesConsommes: a.voyages_consommes,
+            voyagesRestants: a.voyages_restants === -1 ? null : a.voyages_restants,
+          }));
+          allAbonnements.push(...abonnementsClient);
+        } catch {
+          // Ce client n'a pas d'abonnement, on continue
+        }
+      }
+      setAbonnements(allAbonnements);
+    } catch (err) {
+      setError('Impossible de charger les abonnements. Vérifiez que le service abonnements est démarré sur le port 5001.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAbonnements();
+  }, []);
 
   const filtered = abonnements.filter((a) => {
     const matchType = typeFilter ? a.type === typeFilter : true;
@@ -84,22 +96,31 @@ const AbonnementsPage = () => {
     return matchType && matchStatut && matchSearch;
   });
 
-  const handleSuspendre = (id) => {
-    setAbonnements((prev) =>
-      prev.map((a) => a.id === id ? { ...a, statut: 'suspendu' } : a)
-    );
+  const handleSuspendre = async (id) => {
+    try {
+      await suspendreAbonnement(id);
+      fetchAbonnements();
+    } catch (err) {
+      console.error('Erreur suspension:', err);
+    }
   };
 
-  const handleResilier = (id) => {
-    setAbonnements((prev) =>
-      prev.map((a) => a.id === id ? { ...a, statut: 'resilié' } : a)
-    );
+  const handleResilier = async (id) => {
+    try {
+      await resilierAbonnement(id);
+      fetchAbonnements();
+    } catch (err) {
+      console.error('Erreur résiliation:', err);
+    }
   };
 
-  const handleRenouveler = (id) => {
-    setAbonnements((prev) =>
-      prev.map((a) => a.id === id ? { ...a, statut: 'actif' } : a)
-    );
+  const handleRenouveler = async (id) => {
+    try {
+      await renouvelerAbonnement(id);
+      fetchAbonnements();
+    } catch (err) {
+      console.error('Erreur renouvellement:', err);
+    }
   };
 
   return (
@@ -110,10 +131,7 @@ const AbonnementsPage = () => {
           <p className="page-subtitle">Gestion des abonnements et tickets</p>
         </div>
         <div className="page-actions">
-          <button
-            className="btn btn-secondary"
-            onClick={() => setAbonnements(abonnementsFictifs)}
-          >
+          <button className="btn btn-secondary" onClick={fetchAbonnements}>
             <RefreshCw size={16} /> Actualiser
           </button>
           <button
@@ -124,6 +142,12 @@ const AbonnementsPage = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="alert alert-error" style={{ marginBottom: '1rem' }}>
+          {error}
+        </div>
+      )}
 
       {/* Filtres */}
       <div className="filters-container">
@@ -182,7 +206,12 @@ const AbonnementsPage = () => {
       </div>
 
       {/* Liste */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="page-loading">
+          <div className="loading-spinner" />
+          <p>Chargement des abonnements...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>
           Aucun abonnement trouvé.
         </div>
