@@ -23,13 +23,14 @@ const seedAdmin = async() => {
 
         // Créer l'admin
         await User.create({
-            nom: 'Admin',
-            prenom: 'Principal',
-            email: 'admin@billetterie.com',
-            telephone: '0600000000',
-            role: 'admin',
-            motDePasse: hash,
-            statut: 'actif',
+        nom: 'Admin',
+        prenom: 'Principal',
+        email: 'admin@billetterie.com',
+        telephone: '0600000000',
+        role: 'admin',
+        motDePasse: hash,
+        statut: 'actif',
+        premiereConnexion: false,  // Ajouter cette ligne
         });
 
         console.log('Admin créé avec succès !');
