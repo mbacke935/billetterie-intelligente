@@ -1,6 +1,10 @@
 const { Abonnement, TypeAbonnement } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../config/logger');
+const { signerPayload } = require('../utils/qrSigner');
+
+// Format attendu pour user_id : l'ObjectId Mongo généré par le Service Utilisateurs (24 caractères hexadécimaux)
+const USER_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 
 // Attribuer un abonnement à un utilisateur
 exports.attribuerAbonnement = async (req, res) => {
@@ -10,10 +14,16 @@ exports.attribuerAbonnement = async (req, res) => {
     if (!user_id || !type_abonnement_id) {
       return res.status(400).json({ message: 'user_id et type_abonnement_id sont requis.' });
     }
+    if (!USER_ID_REGEX.test(user_id)) {
+      return res.status(400).json({ message: 'Format de user_id invalide : identifiant du Service Utilisateurs attendu (24 caractères hexadécimaux).' });
+    }
 
     const type = await TypeAbonnement.findByPk(type_abonnement_id);
     if (!type) {
       return res.status(404).json({ message: 'Type d\'abonnement non trouvé.' });
+    }
+    if (!type.actif) {
+      return res.status(400).json({ message: 'Cette formule d\'abonnement a été archivée et ne peut plus être attribuée.' });
     }
 
     const dateDebut = new Date();
@@ -38,6 +48,51 @@ exports.attribuerAbonnement = async (req, res) => {
   } catch (error) {
     logger.error('Erreur lors de l\'attribution de l\'abonnement :', error);
     res.status(500).json({ message: 'Erreur lors de l\'attribution de l\'abonnement.', error: error.message });
+  }
+};
+
+// Corriger un abonnement (limité ou illimité) : date de début, date d'expiration
+// ou voyages restants. Ne modifie ni le statut (voir suspendre/renouveler/resilier)
+// ni la formule (type_abonnement_id), pour éviter d'incohérences avec les compteurs déjà posés.
+exports.modifierAbonnement = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date_debut, date_expiration, voyages_restants } = req.body;
+
+    const abonnement = await Abonnement.findByPk(id, {
+      include: { model: TypeAbonnement, as: 'typeAbonnement' }
+    });
+
+    if (!abonnement) {
+      return res.status(404).json({ message: 'Abonnement non trouvé.' });
+    }
+
+    const champsAMettreAJour = {};
+
+    if (date_debut !== undefined) {
+      champsAMettreAJour.date_debut = date_debut;
+    }
+    if (date_expiration !== undefined) {
+      champsAMettreAJour.date_expiration = date_expiration;
+    }
+    if (voyages_restants !== undefined) {
+      if (abonnement.typeAbonnement?.nom === 'Illimité') {
+        return res.status(400).json({ message: 'Les abonnements illimités n\'ont pas de compteur de voyages à modifier.' });
+      }
+      champsAMettreAJour.voyages_restants = voyages_restants;
+    }
+
+    if (Object.keys(champsAMettreAJour).length === 0) {
+      return res.status(400).json({ message: 'Aucun champ modifiable fourni (date_debut, date_expiration, voyages_restants).' });
+    }
+
+    await abonnement.update(champsAMettreAJour);
+
+    logger.info(`Abonnement ${id} corrigé avec succès : ${Object.keys(champsAMettreAJour).join(', ')}.`);
+    res.status(200).json({ message: 'Abonnement mis à jour avec succès.', abonnement });
+  } catch (error) {
+    logger.error(`Erreur lors de la mise à jour de l'abonnement ${req.params.id} :`, error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour de l\'abonnement.', error: error.message });
   }
 };
 
@@ -164,6 +219,37 @@ exports.getAbonnementById = async (req, res) => {
   } catch (error) {
     logger.error(`Erreur lors de la récupération de l'abonnement ${req.params.id} :`, error);
     res.status(500).json({ message: 'Erreur lors de la récupération de l\'abonnement.', error: error.message });
+  }
+};
+
+// Générer le contenu signé du QR Code d'un titre (empêche la falsification côté client)
+exports.genererQrCode = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const abonnement = await Abonnement.findByPk(id, {
+      include: { model: TypeAbonnement, as: 'typeAbonnement' }
+    });
+
+    if (!abonnement) {
+      return res.status(404).json({ message: 'Abonnement non trouvé.' });
+    }
+
+    const payload = {
+      abonnement_id: abonnement.id,
+      user_id: abonnement.user_id,
+      type: abonnement.typeAbonnement?.nom,
+      date_expiration: abonnement.date_expiration,
+      statut: abonnement.statut,
+      genere_le: new Date().toISOString()
+    };
+
+    const qrData = signerPayload(payload);
+
+    logger.info(`QR Code généré pour l'abonnement ${id}.`);
+    res.status(200).json({ qrData });
+  } catch (error) {
+    logger.error(`Erreur lors de la génération du QR Code pour l'abonnement ${req.params.id} :`, error);
+    res.status(500).json({ message: 'Erreur lors de la génération du QR Code.', error: error.message });
   }
 };
 

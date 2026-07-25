@@ -1,8 +1,24 @@
 const bcrypt = require('bcrypt');
+const { Readable } = require('stream');
+const csv = require('csv-parser');
 const User = require('../models/User');
 
 const generatePassword = require('../utils/generatePassword');
 const sendEmail = require('../utils/sendEmail');
+
+const ROLES_VALIDES = ['admin', 'agent', 'client'];
+
+// Parse un buffer CSV en tableau d'objets ligne, en gérant virgules/guillemets correctement
+const parserCSV = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const lignes = [];
+    Readable.from(buffer)
+      .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
+      .on('data', (ligne) => lignes.push(ligne))
+      .on('end', () => resolve(lignes))
+      .on('error', reject);
+  });
+};
 
 // POST /api/users - Créer un utilisateur individuellement
 const creerUtilisateur = async (req, res) => {
@@ -49,10 +65,86 @@ const creerUtilisateur = async (req, res) => {
   }
 };
 
+// POST /api/users/import - Importer plusieurs utilisateurs via un fichier CSV
+// Colonnes attendues : nom, prenom, email, telephone, role
+const importerUtilisateursCSV = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Aucun fichier CSV envoyé.' });
+    }
+
+    let lignes;
+    try {
+      lignes = await parserCSV(req.file.buffer);
+    } catch (err) {
+      return res.status(400).json({ message: 'Fichier CSV invalide.', error: err.message });
+    }
+
+    // Le rôle peut être imposé par la page appelante (ex. import CSV dans "Agents")
+    // et prévaut alors sur la colonne "role" éventuellement présente dans le fichier.
+    const roleImpose = ROLES_VALIDES.includes(req.body.role) ? req.body.role : null;
+
+    let success = 0;
+    let errors = 0;
+    const errorMessages = [];
+
+    for (let i = 0; i < lignes.length; i++) {
+      const numeroLigne = i + 2; // +1 pour l'en-tête, +1 pour l'index 0-based
+      const { nom, prenom, email, telephone, role } = lignes[i];
+
+      if (!nom || !prenom || !email || !telephone) {
+        errors++;
+        errorMessages.push(`Ligne ${numeroLigne} : nom, prenom, email et telephone sont requis.`);
+        continue;
+      }
+
+      const roleFinal = roleImpose || (ROLES_VALIDES.includes(role) ? role : 'client');
+
+      try {
+        const emailExiste = await User.findOne({ email });
+        if (emailExiste) {
+          throw new Error('Cet email est déjà utilisé.');
+        }
+        const telExiste = await User.findOne({ telephone });
+        if (telExiste) {
+          throw new Error('Ce numéro de téléphone est déjà utilisé.');
+        }
+
+        const motDePasseTemp = generatePassword(8);
+        const hash = await bcrypt.hash(motDePasseTemp, 10);
+
+        await User.create({
+          nom,
+          prenom,
+          email,
+          telephone,
+          role: roleFinal,
+          motDePasse: hash,
+          statut: 'bloque',
+        });
+
+        success++;
+      } catch (err) {
+        errors++;
+        errorMessages.push(`Ligne ${numeroLigne} (${email}) : ${err.message}`);
+      }
+    }
+
+    res.status(200).json({
+      message: `Import terminé : ${success} utilisateur(s) créé(s), ${errors} erreur(s).`,
+      success,
+      errors,
+      errorMessages,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+  }
+};
+
 // GET /api/users - Consulter la liste des utilisateurs (avec filtres)
 const listerUtilisateurs = async(req, res) => {
     try {
-        const { role, statut, email, telephone, id } = req.query;
+        const { role, statut, email, telephone, id, search } = req.query;
         const filtre = {};
 
         if (role) filtre.role = role;
@@ -60,6 +152,16 @@ const listerUtilisateurs = async(req, res) => {
         if (email) filtre.email = email;
         if (telephone) filtre.telephone = telephone;
         if (id) filtre._id = id;
+
+        // Recherche libre côté serveur : nom, prénom, email, téléphone (et identifiant si valide)
+        if (search) {
+            const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+            const ou = [{ nom: regex }, { prenom: regex }, { email: regex }, { telephone: regex }];
+            if (/^[0-9a-fA-F]{24}$/.test(search)) {
+                ou.push({ _id: search });
+            }
+            filtre.$or = ou;
+        }
 
         const users = await User.find(filtre).select('-motDePasse');
 
@@ -248,6 +350,7 @@ const supprimerGroupe = async(req, res) => {
 
 module.exports = {
     creerUtilisateur,
+    importerUtilisateursCSV,
     listerUtilisateurs,
     obtenirUtilisateur,
     activerUtilisateur,

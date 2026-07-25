@@ -2,16 +2,21 @@
 process.env.NODE_ENV = 'test';
 
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
 const { app, seedDefaultData } = require('../server');
 const { sequelize, TypeAbonnement, Abonnement, Voyage } = require('../models');
 
 describe('Tests d\'intégration du Service Abonnements', () => {
+  // Toutes les routes /api exigent désormais un JWT du Service Utilisateurs
+  let token;
 
   beforeAll(async () => {
     // Synchroniser les modèles avec force: true pour repartir sur une BDD propre
     await sequelize.sync({ force: true });
     // Alimenter les formules d'abonnements par défaut
     await seedDefaultData();
+
+    token = jwt.sign({ id: '507f191e810c19729de860ea', role: 'agent' }, process.env.JWT_SECRET, { expiresIn: '1h' });
   });
 
   afterAll(async () => {
@@ -28,9 +33,25 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     });
   });
 
+  describe('Authentification', () => {
+    test('devrait refuser une requête /api sans token', async () => {
+      const res = await request(app).get('/api/type-abonnements');
+      expect(res.statusCode).toEqual(401);
+    });
+
+    test('devrait refuser un token invalide', async () => {
+      const res = await request(app)
+        .get('/api/type-abonnements')
+        .set('Authorization', 'Bearer token-invalide');
+      expect(res.statusCode).toEqual(401);
+    });
+  });
+
   describe('TypeAbonnement CRUD', () => {
     test('devrait récupérer tous les types d\'abonnements', async () => {
-      const res = await request(app).get('/api/type-abonnements');
+      const res = await request(app)
+        .get('/api/type-abonnements')
+        .set('Authorization', `Bearer ${token}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body.length).toEqual(3);
       expect(res.body[0].nom).toEqual('Ticket simple');
@@ -39,6 +60,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     test('devrait créer un nouveau type d\'abonnement', async () => {
       const res = await request(app)
         .post('/api/type-abonnements')
+        .set('Authorization', `Bearer ${token}`)
         .send({
           nom: 'Limité', // Autorisé par validation isIn
           tarif: 25.00,
@@ -53,7 +75,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
   describe('Abonnement Logic', () => {
     let typeAbonnement;
     let createdAbonnementId;
-    const testUserId = 'user_test_supertest_123';
+    const testUserId = '507f191e810c19729de860ea'; // format ObjectId Mongo (24 hex) attendu du Service Utilisateurs
 
     beforeAll(async () => {
       typeAbonnement = await TypeAbonnement.findOne({ where: { nom: 'Ticket simple' } });
@@ -62,11 +84,12 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     test('devrait attribuer un abonnement à un utilisateur', async () => {
       const res = await request(app)
         .post('/api/abonnements')
+        .set('Authorization', `Bearer ${token}`)
         .send({
           user_id: testUserId,
           type_abonnement_id: typeAbonnement.id
         });
-      
+
       expect(res.statusCode).toEqual(201);
       expect(res.body.user_id).toEqual(testUserId);
       expect(res.body.voyages_restants).toEqual(1);
@@ -74,21 +97,39 @@ describe('Tests d\'intégration du Service Abonnements', () => {
       createdAbonnementId = res.body.id;
     });
 
+    test('devrait refuser un user_id au format invalide', async () => {
+      const res = await request(app)
+        .post('/api/abonnements')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          user_id: 'pas-un-objectid-valide',
+          type_abonnement_id: typeAbonnement.id
+        });
+
+      expect(res.statusCode).toEqual(400);
+    });
+
     test('devrait récupérer les abonnements d\'un utilisateur', async () => {
-      const res = await request(app).get(`/api/abonnements/user/${testUserId}`);
+      const res = await request(app)
+        .get(`/api/abonnements/user/${testUserId}`)
+        .set('Authorization', `Bearer ${token}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body.length).toEqual(1);
       expect(res.body[0].id).toEqual(createdAbonnementId);
     });
 
     test('devrait suspendre un abonnement', async () => {
-      const res = await request(app).put(`/api/abonnements/${createdAbonnementId}/suspendre`);
+      const res = await request(app)
+        .put(`/api/abonnements/${createdAbonnementId}/suspendre`)
+        .set('Authorization', `Bearer ${token}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body.abonnement.statut).toEqual('Suspendu');
     });
 
     test('devrait renouveler et réactiver un abonnement', async () => {
-      const res = await request(app).put(`/api/abonnements/${createdAbonnementId}/renouveler`);
+      const res = await request(app)
+        .put(`/api/abonnements/${createdAbonnementId}/renouveler`)
+        .set('Authorization', `Bearer ${token}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body.abonnement.statut).toEqual('Actif');
       expect(res.body.abonnement.voyages_restants).toEqual(1);
@@ -97,7 +138,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
 
   describe('Validation & Voyage Logic (Critique)', () => {
     let activeAbonnement;
-    const userId = 'user_val_test_999';
+    const userId = '507f191e810c19729de860eb';
 
     beforeAll(async () => {
       const type = await TypeAbonnement.findOne({ where: { nom: 'Ticket simple' } });
@@ -115,6 +156,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     test('devrait valider avec succès et consommer le ticket simple', async () => {
       const res = await request(app)
         .post('/api/validations/valider')
+        .set('Authorization', `Bearer ${token}`)
         .send({ abonnement_id: activeAbonnement.id });
 
       expect(res.statusCode).toEqual(200);
@@ -127,6 +169,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     test('devrait refuser la validation d\'un abonnement résilié', async () => {
       const res = await request(app)
         .post('/api/validations/valider')
+        .set('Authorization', `Bearer ${token}`)
         .send({ abonnement_id: activeAbonnement.id });
 
       expect(res.statusCode).toEqual(403);
@@ -148,6 +191,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
 
       const res = await request(app)
         .post('/api/validations/valider')
+        .set('Authorization', `Bearer ${token}`)
         .send({ abonnement_id: expAbonnement.id });
 
       expect(res.statusCode).toEqual(403);
@@ -162,7 +206,9 @@ describe('Tests d\'intégration du Service Abonnements', () => {
 
   describe('GET /api/stats/global', () => {
     test('devrait retourner les indicateurs clés et l\'évolution temporelle', async () => {
-      const res = await request(app).get('/api/stats/global');
+      const res = await request(app)
+        .get('/api/stats/global')
+        .set('Authorization', `Bearer ${token}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body.indicateurs).toBeDefined();
       expect(res.body.repartition_par_statut).toBeDefined();

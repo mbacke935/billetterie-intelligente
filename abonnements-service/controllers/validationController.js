@@ -1,17 +1,34 @@
 const { Abonnement, TypeAbonnement, Voyage, sequelize } = require('../models');
 const crypto = require('crypto');
 const logger = require('../config/logger');
+const { verifierToken } = require('../utils/qrSigner');
 
 // Valider un abonnement / ticket lors du passage d'un portillon ou d'un contrôle
+// Accepte soit le contenu signé d'un QR Code scanné (qrData), soit un abonnement_id
+// saisi manuellement par l'agent en secours si le scan échoue.
 exports.validerAbonnement = async (req, res) => {
   const t = await sequelize.transaction();
-  const { abonnement_id } = req.body;
+  const { qrData } = req.body;
+  let { abonnement_id } = req.body;
 
   try {
+    if (qrData) {
+      const payload = verifierToken(qrData);
+      if (!payload || !payload.abonnement_id) {
+        await t.rollback();
+        logger.warn('Tentative de validation avec un QR Code invalide ou falsifié.');
+        return res.status(400).json({
+          statut_validation: 'REFUSE',
+          raison: 'QR Code invalide ou falsifié.'
+        });
+      }
+      abonnement_id = payload.abonnement_id;
+    }
+
     if (!abonnement_id) {
       await t.rollback();
       logger.warn('Tentative de validation sans identifiant d\'abonnement.');
-      return res.status(400).json({ message: 'L\'identifiant de l\'abonnement (abonnement_id) est requis.' });
+      return res.status(400).json({ message: 'L\'identifiant de l\'abonnement (abonnement_id ou qrData) est requis.' });
     }
 
     // Récupérer l'abonnement avec sa formule
@@ -56,6 +73,8 @@ exports.validerAbonnement = async (req, res) => {
 
     // 3. Traitement selon le type de formule (Ticket simple, Limité, Illimité)
     const estIllimite = type.nom === 'Illimité';
+    // Capturé avant abonnement.update(), qui mute l'instance en place.
+    const voyagesRestantsAvant = abonnement.voyages_restants;
     let nouveauxVoyagesRestants = abonnement.voyages_restants;
 
     if (!estIllimite) {
@@ -93,11 +112,13 @@ exports.validerAbonnement = async (req, res) => {
     // 4. Générer un identifiant de validation unique
     const validationId = `VAL-${crypto.randomUUID().toUpperCase()}`;
 
-    // 5. Enregistrer le voyage dans l'historique
+    // 5. Enregistrer le voyage dans l'historique, avec l'état du compteur avant/après
     await Voyage.create({
       abonnement_id: abonnement.id,
       date_voyage: dateActuelle,
-      validation_id: validationId
+      validation_id: validationId,
+      voyages_restants_avant: voyagesRestantsAvant,
+      voyages_restants_apres: nouveauxVoyagesRestants
     }, { transaction: t });
 
     await t.commit();

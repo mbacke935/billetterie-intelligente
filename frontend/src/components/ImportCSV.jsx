@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { Upload, FileText, X } from 'lucide-react';
+import api from '../services/api';
 
-const ImportCSV = ({ onImport, onClose }) => {
+const ImportCSV = ({ role, onClose }) => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,39 +47,26 @@ const ImportCSV = ({ onImport, onClose }) => {
     setError('');
 
     try {
-      // Lire tout le fichier et envoyer les données ligne par ligne
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const text = event.target.result;
-        const lines = text.split('\n').filter((line) => line.trim());
-        const headers = lines[0].split(',').map((h) => h.trim());
+      const formData = new FormData();
+      formData.append('fichier', file);
+      if (role) {
+        formData.append('role', role);
+      }
 
-        let success = 0;
-        let errors = 0;
-        const errorMessages = [];
+      // Le fichier est parsé côté serveur (csv-parser), qui gère correctement
+      // les virgules/guillemets dans les champs contrairement à un split naïf.
+      const { data } = await api.post('/users/import', formData, {
+        headers: { 'Content-Type': undefined },
+      });
 
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',').map((v) => v.trim());
-          const userData = {};
-          headers.forEach((header, index) => {
-            userData[header] = values[index] || '';
-          });
-
-          try {
-            await onImport(userData);
-            success++;
-          } catch (err) {
-            errors++;
-            errorMessages.push(`Ligne ${i + 1}: ${err.response?.data?.message || err.message}`);
-          }
-        }
-
-        setResult({ success, errors, errorMessages });
-        setLoading(false);
-      };
-      reader.readAsText(file);
+      setResult({
+        success: data.success,
+        errors: data.errors,
+        errorMessages: data.errorMessages,
+      });
     } catch (err) {
-      setError('Erreur lors de l\'import.');
+      setError(err.response?.data?.message || 'Erreur lors de l\'import.');
+    } finally {
       setLoading(false);
     }
   };
@@ -136,7 +124,7 @@ const ImportCSV = ({ onImport, onClose }) => {
                 <div className="import-placeholder">
                   <Upload size={40} />
                   <p>Cliquez pour sélectionner un fichier CSV</p>
-                  <span className="import-hint">Format : nom, prenom, email, telephone, role, motDePasse</span>
+                  <span className="import-hint">Colonnes attendues : nom, prenom, email, telephone{role ? '' : ', role'}</span>
                 </div>
               )}
             </div>

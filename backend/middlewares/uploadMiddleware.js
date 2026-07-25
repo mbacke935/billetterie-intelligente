@@ -32,4 +32,22 @@ const upload = multer({
     },
 });
 
+// Upload en mémoire pour les fichiers CSV (pas besoin de les stocker sur disque)
+const uploadCSV = multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) => {
+        const nomOk = file.originalname.toLowerCase().endsWith('.csv');
+        const typeOk = ['text/csv', 'application/vnd.ms-excel', 'application/octet-stream'].includes(file.mimetype);
+        if (nomOk || typeOk) {
+            cb(null, true);
+        } else {
+            cb(new Error('Veuillez fournir un fichier CSV.'), false);
+        }
+    },
+    limits: {
+        fileSize: 2 * 1024 * 1024, // 2 MB
+    },
+});
+
 module.exports = upload;
+module.exports.uploadCSV = uploadCSV;

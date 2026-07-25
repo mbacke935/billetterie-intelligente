@@ -8,6 +8,7 @@ import AbonnementsPage from './pages/AbonnementsPage';
 import NouvelAbonnementPage from './pages/NouvelAbonnementPage';
 import VoyagesPage from './pages/VoyagesPage';
 import TicketQRCodePage from './pages/TicketQRCodePage';
+import ScanTicketPage from './pages/ScanTicketPage';
 
 import LoginPage from './pages/LoginPage';
 
@@ -136,6 +137,16 @@ function App() {
             <ProtectedRoute>
               <AppLayout>
                 <TicketQRCodePage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scan"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ScanTicketPage />
               </AppLayout>
             </ProtectedRoute>
           }

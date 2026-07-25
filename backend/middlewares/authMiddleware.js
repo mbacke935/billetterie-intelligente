@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const TokenBlacklist = require('../models/TokenBlacklist');
 
 const authMiddleware = async(req, res, next) => {
     try {
@@ -12,6 +13,12 @@ const authMiddleware = async(req, res, next) => {
 
         // Extraire le token (enlever "Bearer ")
         const token = authHeader.split(' ')[1];
+
+        // Rejeter les tokens invalidés par un logout précédent
+        const estRevoque = await TokenBlacklist.findOne({ token });
+        if (estRevoque) {
+            return res.status(401).json({ message: 'Token invalide ou expiré.' });
+        }
 
         // Vérifier et décoder le token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -27,8 +34,10 @@ const authMiddleware = async(req, res, next) => {
             return res.status(403).json({ message: 'Compte non actif.' });
         }
 
-        // Ajouter l'utilisateur à la requête pour les prochains middlewares/contrôleurs
+        // Ajouter l'utilisateur et le token brut à la requête pour les prochains middlewares/contrôleurs
         req.user = user;
+        req.token = token;
+        req.tokenExp = decoded.exp;
         next();
     } catch (error) {
         return res.status(401).json({ message: 'Token invalide ou expiré.' });

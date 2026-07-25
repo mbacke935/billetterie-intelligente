@@ -464,6 +464,44 @@ button, input, select, textarea {
   border-color: var(--border-hover);
 }
 
+/* Ticket / Abonnement card — style "billet d'embarquement" */
+.ticket-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.ticket-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.ticket-card-accent {
+  height: 4px;
+  background: var(--ticket-accent, var(--primary));
+}
+
+.ticket-card-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ticket-card-stub {
+  padding: 12px 16px 14px;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .stats-card-icon-wrapper {
   width: 48px;
   height: 48px;

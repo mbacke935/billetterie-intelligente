@@ -5,6 +5,7 @@ require('dotenv').config();
 const { connectDB, sequelize } = require('./config/db');
 const { TypeAbonnement } = require('./models');
 const logger = require('./config/logger');
+const authMiddleware = require('./middlewares/authMiddleware');
 
 const app = express();
 
@@ -35,6 +36,10 @@ const voyageRoutes = require('./routes/voyageRoutes');
 const validationRoutes = require('./routes/validationRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 
+// Toutes les routes /api nécessitent le JWT émis par le Service Utilisateurs
+// (le /health public reste accessible sans authentification pour le monitoring)
+app.use('/api', authMiddleware);
+
 // Montage des routes
 app.use('/api/type-abonnements', typeAbonnementRoutes);
 app.use('/api/abonnements', abonnementRoutes);
@@ -63,19 +68,19 @@ const seedDefaultData = async () => {
       await TypeAbonnement.bulkCreate([
         {
           nom: 'Ticket simple',
-          tarif: 2.00,
+          tarif: 500.00,
           duree_validite: 1, // 1 jour
           voyages_initiaux: 1
         },
         {
           nom: 'Limité',
-          tarif: 15.00,
+          tarif: 5000.00,
           duree_validite: 7, // 7 jours
           voyages_initiaux: 10
         },
         {
           nom: 'Illimité',
-          tarif: 50.00,
+          tarif: 15000.00,
           duree_validite: 30, // 30 jours
           voyages_initiaux: null
         }

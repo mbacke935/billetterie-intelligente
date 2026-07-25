@@ -25,6 +25,16 @@ const Voyage = sequelize.define('Voyage', {
     type: DataTypes.STRING,
     allowNull: false,
     comment: 'ID de validation unique généré lors du passage/validation'
+  },
+  voyages_restants_avant: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Voyages restants juste avant cette validation (-1 = illimité)'
+  },
+  voyages_restants_apres: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Voyages restants juste après cette validation (-1 = illimité)'
   }
 }, {
   tableName: 'voyages',

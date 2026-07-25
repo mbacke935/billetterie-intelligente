@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const TokenBlacklist = require('../models/TokenBlacklist');
 const generatePassword = require('../utils/generatePassword');
 const sendEmail = require('../utils/sendEmail');
 
@@ -63,9 +64,17 @@ const login = async (req, res) => {
 
 // POST /api/auth/logout
 const logout = async(req, res) => {
-    // Avec JWT, le logout se fait côté client en supprimant le token
-    // Côté serveur on confirme simplement la déconnexion
-    res.status(200).json({ message: 'Déconnexion réussie.' });
+    try {
+        // Invalider le token côté serveur jusqu'à son expiration naturelle
+        await TokenBlacklist.create({
+            token: req.token,
+            expiresAt: new Date(req.tokenExp * 1000),
+        });
+
+        res.status(200).json({ message: 'Déconnexion réussie.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    }
 };
 
 // POST /api/auth/register

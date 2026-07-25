@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AbonnementCard from '../components/AbonnementCard';
 import {
@@ -24,6 +24,8 @@ const typeMap = {
   'Illimité': 'abonnement_illimite',
 };
 
+const TICKETS_PAR_PAGE = 12;
+
 const AbonnementsPage = () => {
   const navigate = useNavigate();
   const [abonnements, setAbonnements] = useState([]);
@@ -33,6 +35,7 @@ const AbonnementsPage = () => {
   const [statutFilter, setStatutFilter] = useState('');
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
   const fetchClients = async () => {
     try {
@@ -63,8 +66,8 @@ const AbonnementsPage = () => {
             email: client.email,
             type: typeMap[a.typeAbonnement?.nom] || 'ticket_simple',
             statut: statutMap[a.statut] || 'actif',
-            dateDebut: a.date_debut?.split('T')[0],
-            dateExpiration: a.date_expiration?.split('T')[0],
+            dateDebut: a.date_debut,
+            dateExpiration: a.date_expiration,
             voyagesAutorises: a.typeAbonnement?.voyages_initiaux,
             voyagesConsommes: a.voyages_consommes,
             voyagesRestants: a.voyages_restants === -1 ? null : a.voyages_restants,
@@ -95,6 +98,19 @@ const AbonnementsPage = () => {
       : true;
     return matchType && matchStatut && matchSearch;
   });
+
+  // Revenir à la première page à chaque changement de filtre/recherche
+  // ou de jeu de données, pour éviter une page vide hors bornes.
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter, statutFilter, search, abonnements.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / TICKETS_PAR_PAGE));
+  const pageCourante = Math.min(page, totalPages);
+  const paginated = filtered.slice(
+    (pageCourante - 1) * TICKETS_PAR_PAGE,
+    pageCourante * TICKETS_PAR_PAGE
+  );
 
   const handleSuspendre = async (id) => {
     try {
@@ -216,21 +232,51 @@ const AbonnementsPage = () => {
           Aucun abonnement trouvé.
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '1rem',
-        }}>
-          {filtered.map((abonnement) => (
-            <AbonnementCard
-              key={abonnement.id}
-              abonnement={abonnement}
-              onSuspendre={handleSuspendre}
-              onResilier={handleResilier}
-              onRenouveler={handleRenouveler}
-            />
-          ))}
-        </div>
+        <>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '0.9rem',
+          }}>
+            {paginated.map((abonnement) => (
+              <AbonnementCard
+                key={abonnement.id}
+                abonnement={abonnement}
+                onSuspendre={handleSuspendre}
+                onResilier={handleResilier}
+                onRenouveler={handleRenouveler}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1rem',
+              marginTop: '1.5rem',
+            }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={pageCourante === 1}
+              >
+                <ChevronLeft size={16} /> Précédent
+              </button>
+              <span style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
+                Page {pageCourante} sur {totalPages} ({filtered.length} ticket{filtered.length > 1 ? 's' : ''})
+              </span>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={pageCourante === totalPages}
+              >
+                Suivant <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

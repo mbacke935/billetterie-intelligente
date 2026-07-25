@@ -12,6 +12,7 @@ const NouvelAbonnementPage = () => {
     user_id: '',
     type_abonnement_id: '',
   });
+  const [clientSearch, setClientSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [success, setSuccess] = useState('');
@@ -61,6 +62,19 @@ const NouvelAbonnementPage = () => {
   };
 
   const typeSelectionne = types.find(t => t.id === parseInt(formData.type_abonnement_id));
+
+  // Filtre les clients affichés dans la liste déroulante par nom/prénom/email,
+  // en gardant toujours visible le client déjà sélectionné même s'il ne matche plus la recherche.
+  const clientsFiltres = clients.filter((c) => {
+    if (c._id === formData.user_id) return true;
+    if (!clientSearch) return true;
+    const s = clientSearch.toLowerCase();
+    return (
+      c.nom.toLowerCase().includes(s) ||
+      c.prenom.toLowerCase().includes(s) ||
+      c.email.toLowerCase().includes(s)
+    );
+  });
 
   if (loadingData) {
     return (
@@ -113,6 +127,14 @@ const NouvelAbonnementPage = () => {
           {/* Sélection du client */}
           <div className="form-group">
             <label className="form-label">Client</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Rechercher un client par nom, prénom ou email..."
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              style={{ marginBottom: '0.5rem' }}
+            />
             <select
               name="user_id"
               className="form-input"
@@ -120,8 +142,10 @@ const NouvelAbonnementPage = () => {
               onChange={handleChange}
               required
             >
-              <option value="">Sélectionner un client...</option>
-              {clients.map((c) => (
+              <option value="">
+                {clientsFiltres.length === 0 ? 'Aucun client trouvé' : 'Sélectionner un client...'}
+              </option>
+              {clientsFiltres.map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.prenom} {c.nom} — {c.email}
                 </option>
@@ -142,7 +166,7 @@ const NouvelAbonnementPage = () => {
               <option value="">Sélectionner un type...</option>
               {types.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.nom} — {t.tarif} € — {t.duree_validite} jour(s)
+                  {t.nom} — {t.tarif} FCFA — {t.duree_validite} jour(s)
                   {t.voyages_initiaux ? ` — ${t.voyages_initiaux} voyage(s)` : ' — Illimité'}
                 </option>
               ))}
@@ -174,7 +198,7 @@ const NouvelAbonnementPage = () => {
                 </strong>
               </p>
               <p style={{ margin: '0.2rem 0' }}>
-                Tarif : <strong style={{ color: '#02C39A' }}>{typeSelectionne.tarif} €</strong>
+                Tarif : <strong style={{ color: '#02C39A' }}>{typeSelectionne.tarif} FCFA</strong>
               </p>
             </div>
           )}

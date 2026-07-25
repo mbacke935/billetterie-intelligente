@@ -20,10 +20,16 @@ export const creerTypeAbonnement = (data) => apiAbonnements.post('/type-abonneme
 // ── Abonnements ──────────────────────────────────────────────
 export const getAbonnementsByUser = (userId) => apiAbonnements.get(`/abonnements/user/${userId}`);
 export const getAbonnementById = (id) => apiAbonnements.get(`/abonnements/${id}`);
+export const getAbonnementQrCode = (id) => apiAbonnements.get(`/abonnements/${id}/qrcode`);
 export const creerAbonnement = (data) => apiAbonnements.post('/abonnements', data);
 export const suspendreAbonnement = (id) => apiAbonnements.put(`/abonnements/${id}/suspendre`);
 export const renouvelerAbonnement = (id) => apiAbonnements.put(`/abonnements/${id}/renouveler`);
 export const resilierAbonnement = (id) => apiAbonnements.put(`/abonnements/${id}/resilier`);
+
+// ── Validation (scan agent) ─────────────────────────────────
+export const validerQrCode = (qrData) => apiAbonnements.post('/validations/valider', { qrData });
+export const validerAbonnementParId = (abonnementId) =>
+  apiAbonnements.post('/validations/valider', { abonnement_id: abonnementId });
 
 // ── Voyages ──────────────────────────────────────────────────
 export const getVoyagesByUser = (userId) => apiAbonnements.get(`/voyages/user/${userId}`);

@@ -8,7 +8,6 @@ import { Plus, Upload, RefreshCw } from 'lucide-react';
 
 const ClientsPage = () => {
   const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -16,12 +15,16 @@ const ClientsPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
-  const fetchUsers = useCallback(async () => {
+  // Le rôle est fixe (client) ; statut et recherche sont délégués au backend
+  // via des query params plutôt que filtrés côté client sur la liste complète.
+  const fetchUsers = useCallback(async (statut, recherche) => {
     try {
       setLoading(true);
-      const response = await api.get('/users', { params: { role: 'client' } });
+      const params = { role: 'client' };
+      if (statut) params.statut = statut;
+      if (recherche) params.search = recherche;
+      const response = await api.get('/users', { params });
       setUsers(response.data.users);
-      setFilteredUsers(response.data.users);
     } catch (error) {
       console.error('Erreur chargement clients:', error);
     } finally {
@@ -30,72 +33,47 @@ const ClientsPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    const timeout = setTimeout(() => {
+      fetchUsers(statusFilter, search);
+    }, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [search, statusFilter, fetchUsers]);
 
-  useEffect(() => {
-    let result = users;
-
-    if (statusFilter) {
-      result = result.filter((u) => u.statut === statusFilter);
-    }
-
-    if (roleFilter) {
-      result = result.filter((u) => u.role === roleFilter);
-    }
-
-    if (search) {
-      const s = search.toLowerCase();
-      result = result.filter(
-        (u) =>
-          u.nom.toLowerCase().includes(s) ||
-          u.prenom.toLowerCase().includes(s) ||
-          u.email.toLowerCase().includes(s) ||
-          u.telephone.includes(s) ||
-          (u._id && u._id.toLowerCase().includes(s))
-      );
-    }
-
-    setFilteredUsers(result);
-  }, [search, statusFilter, roleFilter, users]);
+  const filteredUsers = roleFilter ? users.filter((u) => u.role === roleFilter) : users;
 
   const handleCreate = async (data) => {
     await api.post('/users', { ...data, role: 'client' });
-    fetchUsers();
+    fetchUsers(statusFilter, search);
   };
 
   const handleActiver = async (id) => {
     await api.put(`/users/${id}/activer`);
-    fetchUsers();
+    fetchUsers(statusFilter, search);
   };
 
   const handleBloquer = async (id) => {
     await api.put(`/users/${id}/bloquer`);
-    fetchUsers();
+    fetchUsers(statusFilter, search);
   };
 
   const handleSupprimer = async (id) => {
     await api.delete(`/users/${id}`);
-    fetchUsers();
+    fetchUsers(statusFilter, search);
   };
 
   const handleActiverGroupe = async (ids) => {
     await api.put('/users/groupe/activer', { ids });
-    fetchUsers();
+    fetchUsers(statusFilter, search);
   };
 
   const handleBloquerGroupe = async (ids) => {
     await api.put('/users/groupe/bloquer', { ids });
-    fetchUsers();
+    fetchUsers(statusFilter, search);
   };
 
   const handleSupprimerGroupe = async (ids) => {
     await api.put('/users/groupe/supprimer', { ids });
-    fetchUsers();
-  };
-
-  const handleImportRow = async (userData) => {
-    await api.post('/users', { ...userData, role: 'client' });
+    fetchUsers(statusFilter, search);
   };
 
   return (
@@ -106,7 +84,7 @@ const ClientsPage = () => {
           <p className="page-subtitle">Gestion des comptes clients</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-secondary" onClick={fetchUsers}>
+          <button className="btn btn-secondary" onClick={() => fetchUsers(statusFilter, search)}>
             <RefreshCw size={16} /> Actualiser
           </button>
           <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
@@ -178,8 +156,8 @@ const ClientsPage = () => {
 
       {showImport && (
         <ImportCSV
-          onImport={handleImportRow}
-          onClose={() => { setShowImport(false); fetchUsers(); }}
+          role="client"
+          onClose={() => { setShowImport(false); fetchUsers(statusFilter, search); }}
         />
       )}
     </div>

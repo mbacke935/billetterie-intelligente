@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middlewares/authMiddleware');
+const { uploadCSV } = require('../middlewares/uploadMiddleware');
 const {
     creerUtilisateur,
+    importerUtilisateursCSV,
     listerUtilisateurs,
     obtenirUtilisateur,
     activerUtilisateur,
@@ -22,6 +24,7 @@ router.put('/groupe/bloquer', bloquerGroupe);
 router.put('/groupe/supprimer', supprimerGroupe);
 
 // CRUD
+router.post('/import', uploadCSV.single('fichier'), importerUtilisateursCSV);
 router.post('/', creerUtilisateur);
 router.get('/', listerUtilisateurs);
 router.get('/:id', obtenirUtilisateur);

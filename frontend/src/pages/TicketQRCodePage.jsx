@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { ArrowLeft, Download, Printer } from 'lucide-react';
-import { getAbonnementById } from '../services/apiAbonnements';
+import { getAbonnementById, getAbonnementQrCode } from '../services/apiAbonnements';
 
 const typeLabels = {
   'Ticket simple': 'Ticket Simple',
@@ -14,14 +14,19 @@ const TicketQRCodePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [abonnement, setAbonnement] = useState(null);
+  const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const res = await getAbonnementById(id);
-        setAbonnement(res.data);
+        const [resAbonnement, resQr] = await Promise.all([
+          getAbonnementById(id),
+          getAbonnementQrCode(id),
+        ]);
+        setAbonnement(resAbonnement.data);
+        setQrData(resQr.data.qrData);
       } catch {
         setError('Impossible de charger le ticket.');
       } finally {
@@ -51,15 +56,6 @@ const TicketQRCodePage = () => {
       </div>
     );
   }
-
-  // Données encodées dans le QR Code
-  const qrData = JSON.stringify({
-    abonnement_id: abonnement.id,
-    user_id: abonnement.user_id,
-    type: abonnement.typeAbonnement?.nom,
-    date_expiration: abonnement.date_expiration,
-    statut: abonnement.statut,
-  });
 
   const estActif = abonnement.statut === 'Actif';
 

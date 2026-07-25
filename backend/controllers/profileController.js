@@ -77,6 +77,7 @@ const changePassword = async (req, res) => {
         // Hasher le nouveau mot de passe
         const hash = await bcrypt.hash(nouveauMotDePasse, 10);
         user.motDePasse = hash;
+        user.premiereConnexion = false;
         await user.save();
 
         res.status(200).json({ message: 'Mot de passe modifié avec succès.' });
