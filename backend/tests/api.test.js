@@ -196,16 +196,46 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
         });
     });
 
-    describe('DELETE /api/users/:id (Suppression définitive)', () => {
-        test('devrait supprimer définitivement le compte et renvoyer 200', async () => {
+    describe('DELETE /api/users/:id (Corbeille)', () => {
+        test('devrait déplacer le compte vers la corbeille et renvoyer 200', async () => {
             const res = await request(app)
                 .delete(`/api/users/${createdUserId}`)
                 .set('Authorization', `Bearer ${adminToken}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.message).toMatch(/supprimé/i);
+            expect(res.body.user.statut).toBe('supprime');
 
-            // Vérifier en BDD : le document n'existe plus
+            // Vérifier en BDD : le compte existe toujours, mais à la corbeille
+            const trashedUser = await User.findById(createdUserId);
+            expect(trashedUser).not.toBeNull();
+            expect(trashedUser.statut).toBe('supprime');
+            expect(trashedUser.statutAvantSuppression).toBe('actif');
+        });
+    });
+
+    describe('PUT /api/users/:id/restaurer', () => {
+        test('devrait restaurer le compte avec son statut précédent', async () => {
+            const res = await request(app)
+                .put(`/api/users/${createdUserId}/restaurer`)
+                .set('Authorization', `Bearer ${adminToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.user.statut).toBe('actif');
+
+            const restoredUser = await User.findById(createdUserId);
+            expect(restoredUser.statut).toBe('actif');
+            expect(restoredUser.statutAvantSuppression).toBeNull();
+        });
+    });
+
+    describe('DELETE /api/users/:id/definitif (Suppression définitive)', () => {
+        test('devrait supprimer définitivement le compte', async () => {
+            const res = await request(app)
+                .delete(`/api/users/${createdUserId}/definitif`)
+                .set('Authorization', `Bearer ${adminToken}`);
+
+            expect(res.status).toBe(200);
+
             const deletedUser = await User.findById(createdUserId);
             expect(deletedUser).toBeNull();
         });

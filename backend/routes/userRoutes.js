@@ -10,9 +10,13 @@ const {
     activerUtilisateur,
     bloquerUtilisateur,
     supprimerUtilisateur,
+    restaurerUtilisateur,
+    supprimerDefinitivement,
     activerGroupe,
     bloquerGroupe,
     supprimerGroupe,
+    restaurerGroupe,
+    supprimerDefinitivementGroupe,
 } = require('../controllers/userController');
 
 // Toutes les routes nécessitent une authentification
@@ -22,6 +26,8 @@ router.use(authMiddleware);
 router.put('/groupe/activer', activerGroupe);
 router.put('/groupe/bloquer', bloquerGroupe);
 router.put('/groupe/supprimer', supprimerGroupe);
+router.put('/groupe/restaurer', restaurerGroupe);
+router.delete('/groupe/definitif', supprimerDefinitivementGroupe);
 
 // CRUD
 router.post('/import', uploadCSV.single('fichier'), importerUtilisateursCSV);
@@ -30,6 +36,8 @@ router.get('/', listerUtilisateurs);
 router.get('/:id', obtenirUtilisateur);
 router.put('/:id/activer', activerUtilisateur);
 router.put('/:id/bloquer', bloquerUtilisateur);
+router.put('/:id/restaurer', restaurerUtilisateur);
+router.delete('/:id/definitif', supprimerDefinitivement);
 router.delete('/:id', supprimerUtilisateur);
 
 module.exports = router;

@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { CheckCircle, XCircle, Trash2, MoreVertical } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, MoreVertical, RotateCcw } from 'lucide-react';
 
 const statutBadge = {
   actif: 'badge-green',
   bloque: 'badge-orange',
+  supprime: 'badge-red',
 };
 
 const statutLabel = {
   actif: 'Actif',
   bloque: 'Bloqué',
+  supprime: 'Corbeille',
 };
 
 const roleBadge = {
@@ -23,7 +25,20 @@ const roleLabel = {
   client: 'Client',
 };
 
-const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, onBloquerGroupe, onSupprimerGroupe }) => {
+const UserTable = ({
+  users,
+  modeCorbeille = false,
+  onActiver,
+  onBloquer,
+  onSupprimer,
+  onRestaurer,
+  onSupprimerDefinitif,
+  onActiverGroupe,
+  onBloquerGroupe,
+  onSupprimerGroupe,
+  onRestaurerGroupe,
+  onSupprimerDefinitifGroupe,
+}) => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -49,11 +64,15 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
     } else if (action === 'bloquer') {
       await onBloquerGroupe(selectedIds);
     } else if (action === 'supprimer') {
+      await onSupprimerGroupe(selectedIds);
+    } else if (action === 'restaurer') {
+      await onRestaurerGroupe(selectedIds);
+    } else if (action === 'supprimerDefinitif') {
       const confirme = window.confirm(
         `Supprimer définitivement ${selectedIds.length} compte(s) ? Cette action est irréversible et effacera toutes leurs informations.`
       );
       if (!confirme) return;
-      await onSupprimerGroupe(selectedIds);
+      await onSupprimerDefinitifGroupe(selectedIds);
     }
 
     setSelectedIds([]);
@@ -65,15 +84,28 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
       {selectedIds.length > 0 && (
         <div className="table-group-actions">
           <span className="table-group-count">{selectedIds.length} sélectionné(s)</span>
-          <button className="btn btn-sm btn-success" onClick={() => handleGroupAction('activer')}>
-            <CheckCircle size={14} /> Activer
-          </button>
-          <button className="btn btn-sm btn-warning" onClick={() => handleGroupAction('bloquer')}>
-            <XCircle size={14} /> Bloquer
-          </button>
-          <button className="btn btn-sm btn-danger" onClick={() => handleGroupAction('supprimer')}>
-            <Trash2 size={14} /> Supprimer
-          </button>
+          {modeCorbeille ? (
+            <>
+              <button className="btn btn-sm btn-success" onClick={() => handleGroupAction('restaurer')}>
+                <RotateCcw size={14} /> Restaurer
+              </button>
+              <button className="btn btn-sm btn-danger" onClick={() => handleGroupAction('supprimerDefinitif')}>
+                <Trash2 size={14} /> Supprimer définitivement
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-sm btn-success" onClick={() => handleGroupAction('activer')}>
+                <CheckCircle size={14} /> Activer
+              </button>
+              <button className="btn btn-sm btn-warning" onClick={() => handleGroupAction('bloquer')}>
+                <XCircle size={14} /> Bloquer
+              </button>
+              <button className="btn btn-sm btn-danger" onClick={() => handleGroupAction('supprimer')}>
+                <Trash2 size={14} /> Supprimer
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -100,7 +132,9 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
         <tbody>
           {users.length === 0 ? (
             <tr>
-              <td colSpan="8" className="table-empty">Aucun utilisateur trouvé.</td>
+              <td colSpan="8" className="table-empty">
+                {modeCorbeille ? 'La corbeille est vide.' : 'Aucun utilisateur trouvé.'}
+              </td>
             </tr>
           ) : (
             users.map((user) => (
@@ -137,33 +171,52 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
                     </button>
                     {openMenuId === user._id && (
                       <div className="dropdown-menu">
-                        {user.statut !== 'actif' && (
-                          <button
-                            className="dropdown-item"
-                            onClick={() => { onActiver(user._id); setOpenMenuId(null); }}
-                          >
-                            <CheckCircle size={14} /> Activer
-                          </button>
+                        {user.statut === 'supprime' ? (
+                          <>
+                            <button
+                              className="dropdown-item"
+                              onClick={() => { onRestaurer(user._id); setOpenMenuId(null); }}
+                            >
+                              <RotateCcw size={14} /> Restaurer
+                            </button>
+                            <button
+                              className="dropdown-item dropdown-item-danger"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                if (window.confirm('Supprimer définitivement ce compte ? Cette action est irréversible et effacera toutes ses informations.')) {
+                                  onSupprimerDefinitif(user._id);
+                                }
+                              }}
+                            >
+                              <Trash2 size={14} /> Supprimer définitivement
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {user.statut !== 'actif' && (
+                              <button
+                                className="dropdown-item"
+                                onClick={() => { onActiver(user._id); setOpenMenuId(null); }}
+                              >
+                                <CheckCircle size={14} /> Activer
+                              </button>
+                            )}
+                            {user.statut !== 'bloque' && (
+                              <button
+                                className="dropdown-item"
+                                onClick={() => { onBloquer(user._id); setOpenMenuId(null); }}
+                              >
+                                <XCircle size={14} /> Bloquer
+                              </button>
+                            )}
+                            <button
+                              className="dropdown-item dropdown-item-danger"
+                              onClick={() => { onSupprimer(user._id); setOpenMenuId(null); }}
+                            >
+                              <Trash2 size={14} /> Supprimer
+                            </button>
+                          </>
                         )}
-                        {user.statut !== 'bloque' && (
-                          <button
-                            className="dropdown-item"
-                            onClick={() => { onBloquer(user._id); setOpenMenuId(null); }}
-                          >
-                            <XCircle size={14} /> Bloquer
-                          </button>
-                        )}
-                        <button
-                          className="dropdown-item dropdown-item-danger"
-                          onClick={() => {
-                            setOpenMenuId(null);
-                            if (window.confirm('Supprimer définitivement ce compte ? Cette action est irréversible et effacera toutes ses informations.')) {
-                              onSupprimer(user._id);
-                            }
-                          }}
-                        >
-                          <Trash2 size={14} /> Supprimer
-                        </button>
                       </div>
                     )}
                   </div>

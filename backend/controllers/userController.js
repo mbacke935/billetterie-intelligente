@@ -184,6 +184,14 @@ const listerUtilisateurs = async(req, res) => {
             filtre._id = { $in: idsValides };
         }
 
+        // Par défaut (hors recherche directe par id/ids), les comptes mis à la corbeille
+        // (statut "supprime") sont exclus de la liste : ils ne doivent pas apparaître dans
+        // le tableau de bord. Il faut demander explicitement statut=supprime pour consulter
+        // la corbeille elle-même.
+        if (!statut && !id && !ids) {
+            filtre.statut = { $ne: 'supprime' };
+        }
+
         // Recherche libre côté serveur : nom, prénom, email, téléphone (et identifiant si valide)
         if (search) {
             const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -275,22 +283,77 @@ const activerUtilisateur = async(req, res) => {
 // PUT /api/users/:id/bloquer - Bloquer un compte
 const bloquerUtilisateur = async(req, res) => {
     try {
-        const user = await User.findByIdAndUpdate(
-            req.params.id, { statut: 'bloque' }, { new: true }
-        ).select('-motDePasse');
+        const user = await User.findById(req.params.id);
 
         if (!user) {
             return res.status(404).json({ message: 'Utilisateur non trouvé.' });
         }
+        if (user.statut === 'supprime') {
+            return res.status(400).json({ message: 'Ce compte est dans la corbeille : restaurez-le avant de le bloquer.' });
+        }
 
-        res.status(200).json({ message: 'Compte bloqué.', user });
+        user.statut = 'bloque';
+        await user.save();
+
+        const userSansMotDePasse = user.toObject();
+        delete userSansMotDePasse.motDePasse;
+
+        res.status(200).json({ message: 'Compte bloqué.', user: userSansMotDePasse });
     } catch (error) {
         res.status(500).json({ message: 'Erreur serveur.', error: error.message });
     }
 };
 
-// DELETE /api/users/:id - Supprimer définitivement un compte
+// DELETE /api/users/:id - Mettre un compte à la corbeille (suppression réversible)
 const supprimerUtilisateur = async(req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+        }
+
+        // Mémorise le statut actuel pour pouvoir restaurer le compte à l'identique.
+        user.statutAvantSuppression = user.statut === 'supprime' ? user.statutAvantSuppression : user.statut;
+        user.statut = 'supprime';
+        await user.save();
+
+        const userSansMotDePasse = user.toObject();
+        delete userSansMotDePasse.motDePasse;
+
+        res.status(200).json({ message: 'Compte déplacé vers la corbeille.', user: userSansMotDePasse });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    }
+};
+
+// PUT /api/users/:id/restaurer - Restaurer un compte depuis la corbeille
+const restaurerUtilisateur = async(req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+        }
+        if (user.statut !== 'supprime') {
+            return res.status(400).json({ message: 'Ce compte n\'est pas dans la corbeille.' });
+        }
+
+        user.statut = user.statutAvantSuppression || 'bloque';
+        user.statutAvantSuppression = null;
+        await user.save();
+
+        const userSansMotDePasse = user.toObject();
+        delete userSansMotDePasse.motDePasse;
+
+        res.status(200).json({ message: 'Compte restauré.', user: userSansMotDePasse });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    }
+};
+
+// DELETE /api/users/:id/definitif - Supprimer définitivement un compte (depuis la corbeille)
+const supprimerDefinitivement = async(req, res) => {
     try {
         const user = await User.findByIdAndDelete(req.params.id).select('-motDePasse');
 
@@ -314,7 +377,7 @@ const activerGroupe = async(req, res) => {
         for (const id of ids) {
             const user = await User.findById(id);
 
-            if (user && user.statut !== 'actif') {
+            if (user && user.statut !== 'actif' && user.statut !== 'supprime') {
                 const motDePasseTemp = generatePassword(8);
                 const hash = await bcrypt.hash(motDePasseTemp, 10);
 
@@ -352,7 +415,11 @@ const bloquerGroupe = async(req, res) => {
     try {
         const { ids } = req.body;
 
-        const result = await User.updateMany({ _id: { $in: ids } }, { statut: 'bloque' });
+        // Exclut les comptes déjà à la corbeille : ils doivent d'abord être restaurés.
+        const result = await User.updateMany(
+            { _id: { $in: ids }, statut: { $ne: 'supprime' } },
+            { statut: 'bloque' }
+        );
 
         res.status(200).json({
             message: `${result.modifiedCount} compte(s) bloqué(s).`,
@@ -362,8 +429,47 @@ const bloquerGroupe = async(req, res) => {
     }
 };
 
-// DELETE /api/users/groupe/supprimer - Supprimer définitivement plusieurs comptes
+// DELETE /api/users/groupe/supprimer - Mettre plusieurs comptes à la corbeille
 const supprimerGroupe = async(req, res) => {
+    try {
+        const { ids } = req.body;
+
+        // Pipeline d'agrégation pour copier le statut actuel de chaque document dans
+        // statutAvantSuppression avant de le remplacer par 'supprime', afin de pouvoir
+        // restaurer chaque compte tel qu'il était.
+        const result = await User.updateMany(
+            { _id: { $in: ids }, statut: { $ne: 'supprime' } },
+            [{ $set: { statutAvantSuppression: '$statut', statut: 'supprime' } }]
+        );
+
+        res.status(200).json({
+            message: `${result.modifiedCount} compte(s) déplacé(s) vers la corbeille.`,
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    }
+};
+
+// PUT /api/users/groupe/restaurer - Restaurer plusieurs comptes depuis la corbeille
+const restaurerGroupe = async(req, res) => {
+    try {
+        const { ids } = req.body;
+
+        const result = await User.updateMany(
+            { _id: { $in: ids }, statut: 'supprime' },
+            [{ $set: { statut: { $ifNull: ['$statutAvantSuppression', 'bloque'] }, statutAvantSuppression: null } }]
+        );
+
+        res.status(200).json({
+            message: `${result.modifiedCount} compte(s) restauré(s).`,
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur serveur.', error: error.message });
+    }
+};
+
+// DELETE /api/users/groupe/definitif - Supprimer définitivement plusieurs comptes
+const supprimerDefinitivementGroupe = async(req, res) => {
     try {
         const { ids } = req.body;
 
@@ -385,7 +491,11 @@ module.exports = {
     activerUtilisateur,
     bloquerUtilisateur,
     supprimerUtilisateur,
+    restaurerUtilisateur,
+    supprimerDefinitivement,
     activerGroupe,
     bloquerGroupe,
     supprimerGroupe,
+    restaurerGroupe,
+    supprimerDefinitivementGroupe,
 };

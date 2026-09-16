@@ -4,7 +4,7 @@ import SearchBar from '../components/SearchBar';
 import UserTable from '../components/UserTable';
 import UserForm from '../components/UserForm';
 import ImportCSV from '../components/ImportCSV';
-import { Plus, Upload, RefreshCw, Users, ShieldCheck, UserCog } from 'lucide-react';
+import { Plus, Upload, RefreshCw, Users, ShieldCheck, UserCog, Trash2 } from 'lucide-react';
 
 const ROLE_TABS = [
   { value: '', label: 'Tous', icon: Users },
@@ -111,7 +111,28 @@ const UsersPage = () => {
     refresh();
   };
 
+  const handleRestaurer = async (id) => {
+    await api.put(`/users/${id}/restaurer`);
+    refresh();
+  };
+
+  const handleRestaurerGroupe = async (ids) => {
+    await api.put('/users/groupe/restaurer', { ids });
+    refresh();
+  };
+
+  const handleSupprimerDefinitif = async (id) => {
+    await api.delete(`/users/${id}/definitif`);
+    refresh();
+  };
+
+  const handleSupprimerDefinitifGroupe = async (ids) => {
+    await api.delete('/users/groupe/definitif', { data: { ids } });
+    refresh();
+  };
+
   const tabActif = ROLE_TABS.find((t) => t.value === roleFilter) || ROLE_TABS[0];
+  const modeCorbeille = statusFilter === 'supprime';
 
   return (
     <div className="users-page">
@@ -170,9 +191,17 @@ const UsersPage = () => {
             <option value="">Tous</option>
             <option value="actif">Actif</option>
             <option value="bloque">Bloqué</option>
+            <option value="supprime">🗑 Corbeille</option>
           </select>
         </div>
       </div>
+
+      {modeCorbeille && (
+        <div className="alert alert-info" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Trash2 size={16} />
+          Comptes supprimés : ils n'apparaissent plus ailleurs dans l'application, mais peuvent être restaurés ou effacés définitivement ici.
+        </div>
+      )}
 
       {loading ? (
         <div className="page-loading">
@@ -181,12 +210,17 @@ const UsersPage = () => {
       ) : (
         <UserTable
           users={users}
+          modeCorbeille={modeCorbeille}
           onActiver={handleActiver}
           onBloquer={handleBloquer}
           onSupprimer={handleSupprimer}
+          onRestaurer={handleRestaurer}
+          onSupprimerDefinitif={handleSupprimerDefinitif}
           onActiverGroupe={handleActiverGroupe}
           onBloquerGroupe={handleBloquerGroupe}
           onSupprimerGroupe={handleSupprimerGroupe}
+          onRestaurerGroupe={handleRestaurerGroupe}
+          onSupprimerDefinitifGroupe={handleSupprimerDefinitifGroupe}
         />
       )}
 

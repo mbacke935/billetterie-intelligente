@@ -20,7 +20,13 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
     }
 
-    if (user.statut === 'bloque') {
+    if (user.statut === 'supprime') {
+      return res.status(403).json({ message: 'Ce compte a été supprimé.' });
+    }
+
+    // Vérification par liste blanche (et non un simple "statut === 'bloque'") : un compte
+    // portant un statut inattendu reste ainsi bloqué par défaut plutôt que de passer.
+    if (user.statut !== 'actif') {
       return res.status(403).json({ message: 'Ce compte est bloqué. Contactez un administrateur.' });
     }
 

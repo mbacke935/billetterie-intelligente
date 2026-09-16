@@ -40,8 +40,15 @@ const userSchema = new mongoose.Schema(
     },
     statut: {
       type: String,
-      enum: ['actif', 'bloque'],
+      enum: ['actif', 'bloque', 'supprime'],
       default: 'bloque',
+    },
+    // Statut ('actif' ou 'bloque') que le compte avait juste avant sa mise à la corbeille,
+    // pour pouvoir le restaurer exactement comme il était plutôt que de le rebloquer par défaut.
+    statutAvantSuppression: {
+      type: String,
+      enum: ['actif', 'bloque'],
+      default: null,
     },
     premiereConnexion: {
       type: Boolean,
