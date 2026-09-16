@@ -1,9 +1,11 @@
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User, Ticket } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { LogOut, User, Ticket, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -19,6 +21,14 @@ const Navbar = () => {
       </div>
 
       <div className="navbar-user">
+        <button
+          className="navbar-theme-btn"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'}
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
         <div className="navbar-user-info" onClick={() => navigate('/profile')}>
           <div className="navbar-avatar">
             {user?.photo ? (

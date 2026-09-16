@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, ArrowLeft, Save, Minus, Plus, Repeat } from 'lucide-react';
 import { getTypesAbonnements, creerAbonnement } from '../services/apiAbonnements';
+import { genererTitre } from '../services/apiBilletterie';
 import api from '../services/api';
 
 const NouvelAbonnementPage = () => {
@@ -75,7 +76,24 @@ const NouvelAbonnementPage = () => {
         payload.voyages_personnalises = parseInt(voyagesPersonnalises);
       }
 
-      await creerAbonnement(payload);
+      const { data: abonnement } = await creerAbonnement(payload);
+
+      // Le titre de transport (et son QR Code) est généré côté Service Billetterie,
+      // séparé du Service Abonnements : chaque service reste responsable de ses propres
+      // données. Si cette étape échoue, l'abonnement existe déjà mais restera sans QR
+      // Code tant qu'un titre n'aura pas été (re)généré pour lui.
+      try {
+        await genererTitre({
+          client_id: formData.user_id,
+          abonnement_id: abonnement.id,
+          type_titre: typeSelectionne.nom,
+          date_expiration: abonnement.date_expiration,
+        });
+      } catch (errTitre) {
+        setError(errTitre.response?.data?.message || 'Abonnement créé, mais la génération du titre de transport (QR Code) a échoué. Vérifiez que le Service Billetterie est démarré.');
+        return;
+      }
+
       setSuccess('Abonnement créé avec succès !');
       setTimeout(() => navigate('/abonnements'), 1500);
     } catch (err) {

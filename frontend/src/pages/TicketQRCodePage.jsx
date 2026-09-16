@@ -2,7 +2,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { ArrowLeft, Download, Printer } from 'lucide-react';
-import { getAbonnementById, getAbonnementQrCode } from '../services/apiAbonnements';
+import { getAbonnementById } from '../services/apiAbonnements';
+import { getTitreParAbonnement, getTitreQrCode } from '../services/apiBilletterie';
 
 const typeLabels = {
   'Ticket simple': 'Ticket Simple',
@@ -14,6 +15,7 @@ const TicketQRCodePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [abonnement, setAbonnement] = useState(null);
+  const [titre, setTitre] = useState(null);
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,14 +23,20 @@ const TicketQRCodePage = () => {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const [resAbonnement, resQr] = await Promise.all([
+        // Le QR Code appartient au Service Billetterie : on y retrouve le titre associé
+        // à cet abonnement, puis son jeton QR — le Service Abonnements ne connaît que
+        // les informations d'abonnement (dates, voyages), pas le QR lui-même.
+        const [resAbonnement, resTitre] = await Promise.all([
           getAbonnementById(id),
-          getAbonnementQrCode(id),
+          getTitreParAbonnement(id),
         ]);
         setAbonnement(resAbonnement.data);
+        setTitre(resTitre.data);
+
+        const resQr = await getTitreQrCode(resTitre.data.id);
         setQrData(resQr.data.qrData);
       } catch {
-        setError('Impossible de charger le ticket.');
+        setError('Impossible de charger le ticket. Vérifiez que le Service Billetterie est démarré et qu\'un titre a bien été généré pour cet abonnement.');
       } finally {
         setLoading(false);
       }
@@ -57,7 +65,9 @@ const TicketQRCodePage = () => {
     );
   }
 
-  const estActif = abonnement.statut === 'Actif';
+  // Le ticket n'est réellement utilisable que si l'abonnement ET son titre (QR Code) sont
+  // tous les deux actifs : un titre peut être désactivé indépendamment de l'abonnement.
+  const estActif = abonnement.statut === 'Actif' && titre?.statut === 'actif';
 
   return (
     <div className="users-page">
@@ -148,14 +158,14 @@ const TicketQRCodePage = () => {
             fontWeight: 'bold',
             fontSize: '0.875rem',
           }}>
-            {abonnement.statut}
+            {estActif ? abonnement.statut : (titre?.statut === 'desactive' ? 'Désactivé' : abonnement.statut)}
           </div>
 
           {/* Infos */}
           <div style={{ width: '100%', fontSize: '0.85rem', color: '#94A3B8' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid #334155' }}>
               <span>ID Ticket</span>
-              <span style={{ color: '#CBD5E1', fontSize: '0.75rem' }}>{abonnement.id?.slice(0, 8)}...</span>
+              <span style={{ color: '#CBD5E1', fontSize: '0.75rem' }}>{titre?.id?.slice(0, 8)}...</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid #334155' }}>
               <span>Type</span>
@@ -189,7 +199,7 @@ const TicketQRCodePage = () => {
               fontWeight: 'bold',
               width: '100%',
             }}>
-              ❌ Ce ticket a déjà été utilisé
+              ❌ {titre?.statut === 'desactive' ? 'Ce titre a été désactivé' : 'Ce ticket a déjà été utilisé ou n\'est plus valide'}
             </div>
           )}
         </div>

@@ -1,74 +1,107 @@
-import { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import VoyagesTable from '../components/VoyagesTable';
-import { getVoyagesByUser } from '../services/apiAbonnements';
+import { getValidations } from '../services/apiBilletterie';
 import api from '../services/api';
+
+const PAR_PAGE = 20;
 
 const VoyagesPage = () => {
   const [voyages, setVoyages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [resultatFilter, setResultatFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchVoyages = async () => {
+  const fetchVoyages = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Récupérer tous les clients
-      const clientsRes = await api.get('/users', { params: { role: 'client' } });
-      const clients = clientsRes.data.users;
-
-      // Récupérer les voyages de chaque client
-      const allVoyages = [];
-      for (const client of clients) {
-        try {
-          const res = await getVoyagesByUser(client._id);
-          const voyagesClient = res.data.map((v) => ({
-            id: v.id,
-            client: `${client.prenom} ${client.nom}`,
-            typeAbonnement: v.abonnement?.typeAbonnement?.nom || 'N/A',
-            dateVoyage: new Date(v.date_consommation).toLocaleString('fr-FR'),
-            idValidation: `VAL-${String(v.id).padStart(3, '0')}`,
-          }));
-          allVoyages.push(...voyagesClient);
-        } catch {
-          // Ce client n'a pas de voyages
-        }
+      const params = { page, limit: PAR_PAGE };
+      if (resultatFilter) params.resultat = resultatFilter;
+      if (dateFilter) {
+        params.date_min = `${dateFilter}T00:00:00.000Z`;
+        params.date_max = `${dateFilter}T23:59:59.999Z`;
       }
 
-      // Trier par date décroissante
-      allVoyages.sort((a, b) => new Date(b.dateVoyage) - new Date(a.dateVoyage));
-      setVoyages(allVoyages);
+      let clientsMap = {};
+      if (search) {
+        const resClients = await api.get('/users', { params: { role: 'client', search } });
+        const clientsTrouves = resClients.data.users;
+        if (clientsTrouves.length === 0) {
+          setVoyages([]);
+          setTotal(0);
+          setTotalPages(1);
+          return;
+        }
+        clientsMap = Object.fromEntries(clientsTrouves.map((c) => [c._id, c]));
+      }
+
+      const { data } = await getValidations(params);
+      let rows = data.validations;
+
+      // La recherche par client filtre côté client, le Service Billetterie ne connaissant
+      // pas les noms/emails (il ne stocke que des client_id).
+      if (search) {
+        rows = rows.filter((v) => clientsMap[v.client_id]);
+      }
+
+      const idsManquants = [...new Set(rows.map((v) => v.client_id).filter(Boolean))]
+        .filter((id) => !clientsMap[id]);
+      if (idsManquants.length > 0) {
+        const resUsers = await api.get('/users', { params: { ids: idsManquants.join(',') } });
+        resUsers.data.users.forEach((u) => { clientsMap[u._id] = u; });
+      }
+
+      const mapped = rows.map((v) => {
+        const client = clientsMap[v.client_id];
+        return {
+          id: v.id,
+          client: client ? `${client.prenom} ${client.nom}` : (v.client_id ? 'Client inconnu' : '—'),
+          typeAbonnement: v.titre?.type_titre || 'N/A',
+          dateVoyage: new Date(v.date_validation).toLocaleString('fr-FR'),
+          idValidation: `VAL-${String(v.id).slice(0, 8).toUpperCase()}`,
+          resultat: v.resultat,
+          motifRefus: v.motif_refus,
+          agentId: v.agent_id,
+        };
+      });
+
+      setVoyages(mapped);
+      setTotal(search ? mapped.length : data.total);
+      setTotalPages(search ? 1 : Math.max(1, data.totalPages));
     } catch (err) {
-      setError('Impossible de charger les voyages.');
+      setError('Impossible de charger l\'historique des voyages. Vérifiez que le Service Billetterie est démarré.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, resultatFilter, dateFilter, search]);
 
   useEffect(() => {
-    fetchVoyages();
-  }, []);
+    setPage(1);
+  }, [resultatFilter, dateFilter, search]);
 
-  const filtered = voyages.filter((v) => {
-    const matchSearch = search
-      ? v.client.toLowerCase().includes(search.toLowerCase()) ||
-        v.idValidation.toLowerCase().includes(search.toLowerCase())
-      : true;
-    const matchDate = dateFilter
-      ? v.dateVoyage.includes(dateFilter)
-      : true;
-    return matchSearch && matchDate;
-  });
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchVoyages();
+    }, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [fetchVoyages]);
+
+  const autorises = voyages.filter((v) => v.resultat === 'autorise').length;
+  const refuses = voyages.filter((v) => v.resultat === 'refuse').length;
 
   return (
     <div className="users-page">
       <div className="page-header">
         <div>
           <h1 className="page-title">Historique des voyages</h1>
-          <p className="page-subtitle">Suivi de toutes les validations de voyage</p>
+          <p className="page-subtitle">Suivi de toutes les validations, autorisées et refusées</p>
         </div>
         <div className="page-actions">
           <button className="btn btn-secondary" onClick={fetchVoyages}>
@@ -83,12 +116,12 @@ const VoyagesPage = () => {
         </div>
       )}
 
-      {/* Stats rapides */}
+      {/* Stats rapides (sur la page courante) */}
       <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total voyages', count: voyages.length, color: '#1C7293' },
-          { label: 'Aujourd\'hui', count: voyages.filter(v => v.dateVoyage.includes(new Date().toLocaleDateString('fr-FR'))).length, color: '#02C39A' },
-          { label: 'Cette semaine', count: voyages.length, color: '#21295C' },
+          { label: 'Total (page)', count: voyages.length, color: '#1C7293' },
+          { label: 'Autorisés (page)', count: autorises, color: '#02C39A' },
+          { label: 'Refusés (page)', count: refuses, color: '#E53E3E' },
         ].map((s) => (
           <div key={s.label} className="stats-card" style={{ borderLeft: `4px solid ${s.color}` }}>
             <div className="stats-card-content">
@@ -105,10 +138,22 @@ const VoyagesPage = () => {
           <input
             type="text"
             className="search-bar-input"
-            placeholder="Rechercher par client ou ID validation..."
+            placeholder="Rechercher par client (nom, email)..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+        <div className="filter-group">
+          <label className="filter-label">Résultat :</label>
+          <select
+            className="filter-select"
+            value={resultatFilter}
+            onChange={(e) => setResultatFilter(e.target.value)}
+          >
+            <option value="">Tous</option>
+            <option value="autorise">Autorisé</option>
+            <option value="refuse">Refusé</option>
+          </select>
         </div>
         <div className="filter-group">
           <label className="filter-label">Date :</label>
@@ -128,7 +173,31 @@ const VoyagesPage = () => {
           <p>Chargement des voyages...</p>
         </div>
       ) : (
-        <VoyagesTable voyages={filtered} />
+        <>
+          <VoyagesTable voyages={voyages} />
+
+          {!search && totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft size={16} /> Précédent
+              </button>
+              <span style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
+                Page {page} sur {totalPages} ({total} validation{total > 1 ? 's' : ''})
+              </span>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Suivant <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

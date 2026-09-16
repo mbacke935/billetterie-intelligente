@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ScanLine, CheckCircle, XCircle } from 'lucide-react';
-import { validerQrCode, validerAbonnementParId } from '../services/apiAbonnements';
+import { scannerQrCode, validerManuellement } from '../services/apiBilletterie';
 
 const READER_ID = 'qr-reader';
 
@@ -42,7 +42,7 @@ const ScanTicketPage = () => {
     await arreterScanner();
     setScanning(false);
     try {
-      const { data } = await validerQrCode(qrData);
+      const { data } = await scannerQrCode(qrData);
       setResult(data);
     } catch (err) {
       setResult(err.response?.data || { statut_validation: 'ERREUR', message: 'Erreur de validation.' });
@@ -81,7 +81,7 @@ const ScanTicketPage = () => {
     if (!idManuel.trim()) return;
     setResult(null);
     try {
-      const { data } = await validerAbonnementParId(idManuel.trim());
+      const { data } = await validerManuellement(idManuel.trim());
       setResult(data);
     } catch (err) {
       setResult(err.response?.data || { statut_validation: 'ERREUR', message: 'Erreur de validation.' });
@@ -123,7 +123,7 @@ const ScanTicketPage = () => {
                 className="form-input"
                 value={idManuel}
                 onChange={(e) => setIdManuel(e.target.value)}
-                placeholder="UUID de l'abonnement"
+                placeholder="UUID du titre de transport"
               />
               <button type="submit" className="btn btn-secondary">Valider</button>
             </div>
@@ -144,9 +144,14 @@ const ScanTicketPage = () => {
               {result.details && (
                 <>
                   <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.2rem', fontSize: '0.85rem' }}>
-                    <li>Formule : {result.details.formule}</li>
-                    <li>Voyages restants : {result.details.voyages_restants}</li>
-                    <li>Statut : {result.details.statut_abonnement}</li>
+                    <li>Formule : {result.details.type_titre}</li>
+                    <li>
+                      Voyages restants :{' '}
+                      {result.details.abonnement?.voyages_restants === -1
+                        ? 'Illimité'
+                        : result.details.abonnement?.voyages_restants}
+                    </li>
+                    <li>Statut de l'abonnement : {result.details.abonnement?.statut}</li>
                     <li>Heure de validation : {formatDateHeure(result.details.date_validation)}</li>
                   </ul>
                   <p style={{ margin: '0.5rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>

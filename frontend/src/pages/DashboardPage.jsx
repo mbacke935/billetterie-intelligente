@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import { getStatsBilletterie } from '../services/apiBilletterie';
 import StatsCard from '../components/StatsCard';
-import { ShieldCheck, UserCog, Users } from 'lucide-react';
+import { ShieldCheck, UserCog, Users, Ticket, XCircle } from 'lucide-react';
 
 const DashboardPage = () => {
   const [stats, setStats] = useState(null);
+  const [statsBilletterie, setStatsBilletterie] = useState(null);
+  const [erreurBilletterie, setErreurBilletterie] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
+    fetchStatsBilletterie();
   }, []);
 
   const fetchStats = async () => {
@@ -22,6 +26,15 @@ const DashboardPage = () => {
     }
   };
 
+  const fetchStatsBilletterie = async () => {
+    try {
+      const response = await getStatsBilletterie();
+      setStatsBilletterie(response.data);
+    } catch (error) {
+      setErreurBilletterie('Service Billetterie indisponible.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-loading">
@@ -30,6 +43,8 @@ const DashboardPage = () => {
       </div>
     );
   }
+
+  const indicateursBilletterie = statsBilletterie?.indicateurs;
 
   return (
     <div className="dashboard-page">
@@ -85,6 +100,86 @@ const DashboardPage = () => {
           </div>
         </section>
       </div>
+
+      {/* Service Billetterie : titres et validations */}
+      <section className="dashboard-section">
+        <h2 className="section-title">
+          <Ticket size={20} /> Service Billetterie
+        </h2>
+
+        {erreurBilletterie ? (
+          <div className="alert alert-error">{erreurBilletterie}</div>
+        ) : (
+          <>
+            <div className="stats-grid">
+              <div className="stats-card" style={{ borderLeft: '4px solid #1C7293' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#1C7293' }}>
+                    {indicateursBilletterie?.total_titres ?? 0}
+                  </span>
+                  <span className="stats-card-label">Titres générés</span>
+                </div>
+              </div>
+              <div className="stats-card" style={{ borderLeft: '4px solid #02C39A' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#02C39A' }}>
+                    {indicateursBilletterie?.titres_actifs ?? 0}
+                  </span>
+                  <span className="stats-card-label">Titres actifs</span>
+                </div>
+              </div>
+              <div className="stats-card" style={{ borderLeft: '4px solid #38A169' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#38A169' }}>
+                    {indicateursBilletterie?.validations_autorisees ?? 0}
+                  </span>
+                  <span className="stats-card-label">Voyages autorisés</span>
+                </div>
+              </div>
+              <div className="stats-card" style={{ borderLeft: '4px solid #E53E3E' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#E53E3E' }}>
+                    {indicateursBilletterie?.validations_refusees ?? 0}
+                  </span>
+                  <span className="stats-card-label">Voyages refusés</span>
+                </div>
+              </div>
+              <div className="stats-card" style={{ borderLeft: '4px solid #DD6B20' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#DD6B20' }}>
+                    {indicateursBilletterie?.taux_refus_pourcent ?? 0}%
+                  </span>
+                  <span className="stats-card-label">Taux de refus</span>
+                </div>
+              </div>
+            </div>
+
+            {statsBilletterie?.top_motifs_refus?.length > 0 && (
+              <div style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1rem 1.5rem',
+                marginTop: '1rem',
+              }}>
+                <p style={{ margin: '0 0 0.75rem 0', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                  Principaux motifs de refus
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {statsBilletterie.top_motifs_refus.map((m, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <XCircle size={14} color="var(--danger)" /> {m.motif_refus || 'Motif non précisé'}
+                      </span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{m.total}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </div>
   );
 };

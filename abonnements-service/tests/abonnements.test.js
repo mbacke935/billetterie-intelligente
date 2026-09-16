@@ -4,7 +4,7 @@ process.env.NODE_ENV = 'test';
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const { app, seedDefaultData } = require('../server');
-const { sequelize, TypeAbonnement, Abonnement, Voyage } = require('../models');
+const { sequelize, TypeAbonnement, Abonnement } = require('../models');
 
 describe('Tests d\'intégration du Service Abonnements', () => {
   // Toutes les routes /api exigent désormais un JWT du Service Utilisateurs
@@ -136,7 +136,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     });
   });
 
-  describe('Validation & Voyage Logic (Critique)', () => {
+  describe('POST /api/abonnements/:id/consommer-voyage (Critique - appelé par le Service Billetterie)', () => {
     let activeAbonnement;
     const userId = '507f191e810c19729de860eb';
 
@@ -153,31 +153,27 @@ describe('Tests d\'intégration du Service Abonnements', () => {
       });
     });
 
-    test('devrait valider avec succès et consommer le ticket simple', async () => {
+    test('devrait consommer avec succès le voyage d\'un ticket simple', async () => {
       const res = await request(app)
-        .post('/api/validations/valider')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ abonnement_id: activeAbonnement.id });
+        .post(`/api/abonnements/${activeAbonnement.id}/consommer-voyage`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.statusCode).toEqual(200);
-      expect(res.body.statut_validation).toEqual('VALIDE');
-      expect(res.body.details.voyages_restants).toEqual(0);
-      expect(res.body.details.voyages_consommes).toEqual(1);
-      expect(res.body.details.statut_abonnement).toEqual('Résilie'); // Devrait être résilié car ticket simple avec 0 voyages
+      expect(res.body.abonnement.voyages_restants).toEqual(0);
+      expect(res.body.abonnement.voyages_consommes).toEqual(1);
+      expect(res.body.abonnement.statut).toEqual('Résilie'); // Devrait être résilié car ticket simple avec 0 voyages
     });
 
-    test('devrait refuser la validation d\'un abonnement résilié', async () => {
+    test('devrait refuser la consommation d\'un abonnement résilié', async () => {
       const res = await request(app)
-        .post('/api/validations/valider')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ abonnement_id: activeAbonnement.id });
+        .post(`/api/abonnements/${activeAbonnement.id}/consommer-voyage`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.statusCode).toEqual(403);
-      expect(res.body.statut_validation).toEqual('REFUSE');
-      expect(res.body.raison).toContain('n\'est pas actif');
+      expect(res.body.message).toContain('n\'est pas actif');
     });
 
-    test('devrait refuser la validation si l\'abonnement est expiré', async () => {
+    test('devrait refuser la consommation si l\'abonnement est expiré', async () => {
       const type = await TypeAbonnement.findOne({ where: { nom: 'Illimité' } });
       const expAbonnement = await Abonnement.create({
         user_id: userId,
@@ -190,17 +186,41 @@ describe('Tests d\'intégration du Service Abonnements', () => {
       });
 
       const res = await request(app)
-        .post('/api/validations/valider')
-        .set('Authorization', `Bearer ${token}`)
-        .send({ abonnement_id: expAbonnement.id });
+        .post(`/api/abonnements/${expAbonnement.id}/consommer-voyage`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.statusCode).toEqual(403);
-      expect(res.body.statut_validation).toEqual('REFUSE');
-      expect(res.body.raison).toContain('expiré');
+      expect(res.body.message).toContain('expiré');
 
       // Vérifier que le statut a bien été mis à jour en base
       const updated = await Abonnement.findByPk(expAbonnement.id);
       expect(updated.statut).toEqual('Résilie');
+    });
+
+    test('ne devrait jamais laisser deux consommations simultanées vider le même dernier voyage', async () => {
+      const type = await TypeAbonnement.findOne({ where: { nom: 'Limité' } });
+      const dernierVoyage = await Abonnement.create({
+        user_id: userId,
+        type_abonnement_id: type.id,
+        date_debut: new Date(),
+        date_expiration: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        voyages_restants: 1,
+        voyages_consommes: 0,
+        statut: 'Actif'
+      });
+
+      // Deux scans concurrents du même dernier voyage restant.
+      const [res1, res2] = await Promise.all([
+        request(app).post(`/api/abonnements/${dernierVoyage.id}/consommer-voyage`).set('Authorization', `Bearer ${token}`),
+        request(app).post(`/api/abonnements/${dernierVoyage.id}/consommer-voyage`).set('Authorization', `Bearer ${token}`),
+      ]);
+
+      const statuts = [res1.statusCode, res2.statusCode].sort();
+      expect(statuts).toEqual([200, 403]); // Un seul des deux doit réussir
+
+      const updated = await Abonnement.findByPk(dernierVoyage.id);
+      expect(updated.voyages_restants).toEqual(0);
+      expect(updated.voyages_consommes).toEqual(1); // Jamais 2
     });
   });
 

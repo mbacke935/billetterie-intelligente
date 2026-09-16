@@ -30,10 +30,10 @@ app.use((req, res, next) => {
 });
 
 // Importation des routes
+// Le scan/validation des QR Codes et l'historique des voyages/validations relèvent
+// désormais exclusivement du Service Billetterie, séparé de ce service.
 const typeAbonnementRoutes = require('./routes/typeAbonnementRoutes');
 const abonnementRoutes = require('./routes/abonnementRoutes');
-const voyageRoutes = require('./routes/voyageRoutes');
-const validationRoutes = require('./routes/validationRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 
 // Toutes les routes /api nécessitent le JWT émis par le Service Utilisateurs
@@ -43,8 +43,6 @@ app.use('/api', authMiddleware);
 // Montage des routes
 app.use('/api/type-abonnements', typeAbonnementRoutes);
 app.use('/api/abonnements', abonnementRoutes);
-app.use('/api/voyages', voyageRoutes);
-app.use('/api/validations', validationRoutes);
 app.use('/api/stats', statsRoutes);
 
 // Route de base/santé

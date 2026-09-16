@@ -1,7 +1,6 @@
-const { Abonnement, TypeAbonnement } = require('../models');
+const { Abonnement, TypeAbonnement, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../config/logger');
-const { signerPayload } = require('../utils/qrSigner');
 
 // Format attendu pour user_id : l'ObjectId Mongo généré par le Service Utilisateurs (24 caractères hexadécimaux)
 const USER_ID_REGEX = /^[0-9a-fA-F]{24}$/;
@@ -234,34 +233,77 @@ exports.getAbonnementById = async (req, res) => {
   }
 };
 
-// Générer le contenu signé du QR Code d'un titre (empêche la falsification côté client)
-exports.genererQrCode = async (req, res) => {
+// Consommer atomiquement un voyage sur un abonnement/ticket. Appelé exclusivement par le
+// Service Billetterie lors d'une validation de QR Code : lui seul décide QUAND consommer,
+// mais c'est ICI, et ici seulement, que le compteur est lu et décrémenté — dans une seule
+// transaction avec verrou de ligne (SELECT ... FOR UPDATE), afin qu'un même dernier voyage
+// ne puisse jamais être consommé deux fois par deux scans simultanés (cf. exigence de
+// gestion des validations concurrentes).
+exports.consommerVoyage = async (req, res) => {
+  const t = await sequelize.transaction();
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
     const abonnement = await Abonnement.findByPk(id, {
-      include: { model: TypeAbonnement, as: 'typeAbonnement' }
+      include: { model: TypeAbonnement, as: 'typeAbonnement' },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
     });
 
     if (!abonnement) {
+      await t.rollback();
       return res.status(404).json({ message: 'Abonnement non trouvé.' });
     }
 
-    const payload = {
-      abonnement_id: abonnement.id,
-      user_id: abonnement.user_id,
-      type: abonnement.typeAbonnement?.nom,
-      date_expiration: abonnement.date_expiration,
-      statut: abonnement.statut,
-      genere_le: new Date().toISOString()
-    };
+    const type = abonnement.typeAbonnement;
+    const dateActuelle = new Date();
 
-    const qrData = signerPayload(payload);
+    if (abonnement.statut !== 'Actif') {
+      await t.rollback();
+      return res.status(403).json({ message: `L'abonnement n'est pas actif (statut : ${abonnement.statut}).` });
+    }
 
-    logger.info(`QR Code généré pour l'abonnement ${id}.`);
-    res.status(200).json({ qrData });
+    if (new Date(abonnement.date_debut) > dateActuelle) {
+      await t.rollback();
+      return res.status(403).json({ message: 'L\'abonnement n\'est pas encore valide : la date de début n\'est pas atteinte.' });
+    }
+
+    if (new Date(abonnement.date_expiration) < dateActuelle) {
+      // Abonnement expiré : on corrige son statut au passage, dans la même transaction.
+      await abonnement.update({ statut: 'Résilie' }, { transaction: t });
+      await t.commit();
+      return res.status(403).json({ message: 'L\'abonnement est expiré.' });
+    }
+
+    const estIllimite = type.nom === 'Illimité';
+
+    if (!estIllimite && abonnement.voyages_restants <= 0) {
+      await t.rollback();
+      return res.status(403).json({ message: 'Solde de voyages épuisé.' });
+    }
+
+    const nouveauxVoyagesRestants = estIllimite ? abonnement.voyages_restants : abonnement.voyages_restants - 1;
+    const nouveauxVoyagesConsommes = abonnement.voyages_consommes + 1;
+
+    let nouveauStatut = abonnement.statut;
+    if (!estIllimite && nouveauxVoyagesRestants === 0 && type.nom === 'Ticket simple') {
+      nouveauStatut = 'Résilie';
+    }
+
+    await abonnement.update({
+      voyages_restants: nouveauxVoyagesRestants,
+      voyages_consommes: nouveauxVoyagesConsommes,
+      statut: nouveauStatut,
+    }, { transaction: t });
+
+    await t.commit();
+
+    logger.info(`Voyage consommé pour l'abonnement ${id}. Formule : ${type.nom}. Voyages restants : ${estIllimite ? 'illimité' : nouveauxVoyagesRestants}.`);
+    res.status(200).json({ message: 'Voyage consommé.', abonnement });
   } catch (error) {
-    logger.error(`Erreur lors de la génération du QR Code pour l'abonnement ${req.params.id} :`, error);
-    res.status(500).json({ message: 'Erreur lors de la génération du QR Code.', error: error.message });
+    await t.rollback();
+    logger.error(`Erreur lors de la consommation d'un voyage pour l'abonnement ${id} :`, error);
+    res.status(500).json({ message: 'Erreur lors de la consommation du voyage.', error: error.message });
   }
 };
 

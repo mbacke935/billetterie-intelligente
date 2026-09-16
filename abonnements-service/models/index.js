@@ -1,7 +1,6 @@
 const { sequelize } = require('../config/db');
 const TypeAbonnement = require('./TypeAbonnement');
 const Abonnement = require('./Abonnement');
-const Voyage = require('./Voyage');
 
 // Associations
 TypeAbonnement.hasMany(Abonnement, {
@@ -14,19 +13,8 @@ Abonnement.belongsTo(TypeAbonnement, {
   as: 'typeAbonnement'
 });
 
-Abonnement.hasMany(Voyage, {
-  foreignKey: 'abonnement_id',
-  onDelete: 'CASCADE',
-  onUpdate: 'CASCADE'
-});
-Voyage.belongsTo(Abonnement, {
-  foreignKey: 'abonnement_id',
-  as: 'abonnement'
-});
-
 module.exports = {
   sequelize,
   TypeAbonnement,
-  Abonnement,
-  Voyage
+  Abonnement
 };

@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\PC\\Desktop\\billetterie-intelligente\\billetterie-service\\logs\\.c994205bb8931db3418af707ba70bdef66015ac6-audit.json",
+    "files": [
+        {
+            "date": 1789593667757,
+            "name": "C:\\Users\\PC\\Desktop\\billetterie-intelligente\\billetterie-service\\logs\\combined-2026-09-16.log",
+            "hash": "c065cc7d34442192c49a59dc895e2794567d50406453d98454bfdc34f825a7b2"
+        }
+    ],
+    "hashType": "sha256"
+}

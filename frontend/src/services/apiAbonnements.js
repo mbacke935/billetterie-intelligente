@@ -21,20 +21,14 @@ export const creerTypeAbonnement = (data) => apiAbonnements.post('/type-abonneme
 export const getAllAbonnements = (params) => apiAbonnements.get('/abonnements', { params });
 export const getAbonnementsByUser = (userId) => apiAbonnements.get(`/abonnements/user/${userId}`);
 export const getAbonnementById = (id) => apiAbonnements.get(`/abonnements/${id}`);
-export const getAbonnementQrCode = (id) => apiAbonnements.get(`/abonnements/${id}/qrcode`);
 export const creerAbonnement = (data) => apiAbonnements.post('/abonnements', data);
 export const suspendreAbonnement = (id) => apiAbonnements.put(`/abonnements/${id}/suspendre`);
 export const renouvelerAbonnement = (id) => apiAbonnements.put(`/abonnements/${id}/renouveler`);
 export const resilierAbonnement = (id) => apiAbonnements.put(`/abonnements/${id}/resilier`);
 
-// ── Validation (scan agent) ─────────────────────────────────
-export const validerQrCode = (qrData) => apiAbonnements.post('/validations/valider', { qrData });
-export const validerAbonnementParId = (abonnementId) =>
-  apiAbonnements.post('/validations/valider', { abonnement_id: abonnementId });
-
-// ── Voyages ──────────────────────────────────────────────────
-export const getVoyagesByUser = (userId) => apiAbonnements.get(`/voyages/user/${userId}`);
-export const getVoyagesByAbonnement = (id) => apiAbonnements.get(`/voyages/abonnement/${id}`);
+// Note : la génération/lecture de QR Code, la validation d'un voyage et l'historique des
+// voyages/validations relèvent désormais du Service Billetterie (voir services/apiBilletterie.js),
+// un microservice séparé avec sa propre base de données.
 
 // ── Statistiques ─────────────────────────────────────────────
 export const getStatsAbonnements = () => apiAbonnements.get('/stats/global');
