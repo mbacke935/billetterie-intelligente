@@ -93,7 +93,7 @@ const LoginPage = () => {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Email<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Mail size={18} className="input-icon" style={{ color: emailHasError ? 'var(--danger)' : undefined }} />
               <input
@@ -109,7 +109,7 @@ const LoginPage = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Mot de passe</label>
+            <label className="form-label">Mot de passe<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Lock size={18} className="input-icon" style={{ color: passwordHasError ? 'var(--danger)' : undefined }} />
               <input

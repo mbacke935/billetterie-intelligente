@@ -76,7 +76,7 @@ const ChangerMotDePassePage = () => {
 
           {/* Nouveau mot de passe */}
           <div className="form-group">
-            <label className="form-label">Nouveau mot de passe</label>
+            <label className="form-label">Nouveau mot de passe<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Lock size={18} className="input-icon" />
               <input
@@ -100,7 +100,7 @@ const ChangerMotDePassePage = () => {
 
           {/* Confirmer le mot de passe */}
           <div className="form-group">
-            <label className="form-label">Confirmer le mot de passe</label>
+            <label className="form-label">Confirmer le mot de passe<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Lock size={18} className="input-icon" />
               <input

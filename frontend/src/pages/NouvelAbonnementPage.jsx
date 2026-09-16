@@ -87,6 +87,20 @@ const NouvelAbonnementPage = () => {
 
   const typeSelectionne = types.find(t => t.id === parseInt(formData.type_abonnement_id));
 
+  // Le tarif affiché suit le nombre de voyages : pour une formule "Limité" personnalisée,
+  // on calcule un prix proportionnel au nombre de voyages choisi plutôt que d'afficher
+  // le tarif fixe de la formule par défaut, qui devenait incohérent une fois le nombre
+  // de voyages modifié via le stepper.
+  const prixAffiche = (() => {
+    if (!typeSelectionne) return 0;
+    if (typeSelectionne.nom !== 'Limité') return typeSelectionne.tarif;
+
+    const voyagesParDefaut = typeSelectionne.voyages_initiaux || 1;
+    const prixParVoyage = typeSelectionne.tarif / voyagesParDefaut;
+    const voyagesChoisis = parseInt(voyagesPersonnalises) || voyagesParDefaut;
+    return Math.round(prixParVoyage * voyagesChoisis);
+  })();
+
   // Filtre les clients affichés dans la liste déroulante par nom/prénom/email,
   // en gardant toujours visible le client déjà sélectionné même s'il ne matche plus la recherche.
   const clientsFiltres = clients.filter((c) => {
@@ -150,7 +164,7 @@ const NouvelAbonnementPage = () => {
 
           {/* Sélection du client */}
           <div className="form-group">
-            <label className="form-label">Client</label>
+            <label className="form-label">Client<span className="required-mark">*</span></label>
             <input
               type="text"
               className="form-input"
@@ -179,7 +193,7 @@ const NouvelAbonnementPage = () => {
 
           {/* Type d'abonnement */}
           <div className="form-group">
-            <label className="form-label">Type de titre de transport</label>
+            <label className="form-label">Type de titre de transport<span className="required-mark">*</span></label>
             <select
               name="type_abonnement_id"
               className="form-input"
@@ -201,7 +215,7 @@ const NouvelAbonnementPage = () => {
           {typeSelectionne?.nom === 'Limité' && (
             <div className="form-group">
               <label className="form-label">
-                Nombre de voyages pour cet abonnement
+                Nombre de voyages pour cet abonnement<span className="required-mark">*</span>
               </label>
               <div className="voyages-stepper">
                 <button
@@ -267,7 +281,12 @@ const NouvelAbonnementPage = () => {
                 </strong>
               </p>
               <p style={{ margin: '0.2rem 0' }}>
-                Tarif : <strong style={{ color: '#02C39A' }}>{typeSelectionne.tarif} FCFA</strong>
+                Tarif : <strong style={{ color: '#02C39A' }}>{prixAffiche} FCFA</strong>
+                {typeSelectionne.nom === 'Limité' && (
+                  <span style={{ color: 'var(--text-muted, #64748B)' }}>
+                    {' '}({Math.round(typeSelectionne.tarif / (typeSelectionne.voyages_initiaux || 1))} FCFA/voyage)
+                  </span>
+                )}
               </p>
             </div>
           )}

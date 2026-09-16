@@ -57,7 +57,7 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
         <form onSubmit={handleSubmit} className="user-form">
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Nom</label>
+              <label className="form-label">Nom<span className="required-mark">*</span></label>
               <input
                 type="text"
                 name="nom"
@@ -68,7 +68,7 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Prénom</label>
+              <label className="form-label">Prénom<span className="required-mark">*</span></label>
               <input
                 type="text"
                 name="prenom"
@@ -82,7 +82,7 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Email</label>
+              <label className="form-label">Email<span className="required-mark">*</span></label>
               <input
                 type="email"
                 name="email"
@@ -93,7 +93,7 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Téléphone</label>
+              <label className="form-label">Téléphone<span className="required-mark">*</span></label>
               <input
                 type="tel"
                 name="telephone"
@@ -107,7 +107,7 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
 
           {/* Rôle */}
           <div className="form-group">
-            <label className="form-label">Rôle</label>
+            <label className="form-label">Rôle<span className="required-mark">*</span></label>
             <select
               name="role"
               className="form-input"

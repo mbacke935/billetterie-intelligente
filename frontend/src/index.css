@@ -943,6 +943,12 @@ button, input, select, textarea {
   color: var(--text-secondary);
 }
 
+/* Astérisque marquant un champ obligatoire, ajouté après le libellé */
+.required-mark {
+  color: var(--danger);
+  margin-left: 2px;
+}
+
 .form-input {
   background-color: var(--bg-tertiary);
   border: 1px solid var(--border-color);

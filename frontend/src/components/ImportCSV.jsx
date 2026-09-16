@@ -75,7 +75,7 @@ const ImportCSV = ({ role, onClose }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Importer un fichier CSV</h2>
+          <h2 className="modal-title">Ajouter plusieurs utilisateurs (fichier CSV)</h2>
           <button className="modal-close" onClick={onClose}>
             <X size={20} />
           </button>

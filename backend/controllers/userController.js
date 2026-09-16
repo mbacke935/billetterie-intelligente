@@ -8,6 +8,27 @@ const sendEmail = require('../utils/sendEmail');
 
 const ROLES_VALIDES = ['admin', 'agent', 'client'];
 
+// E-mail envoyé à la création d'un compte, avant son activation par un administrateur.
+// Le compte étant encore bloqué à ce stade, cet e-mail informe seulement l'utilisateur
+// sans lui fournir d'identifiants utilisables (ceux-ci arrivent dans un second e-mail,
+// envoyé à l'activation du compte).
+const envoyerEmailCompteCree = async (user) => {
+  const contenuEmail = `
+    <h2>Bienvenue sur la plateforme Billetterie Intelligente</h2>
+    <p>Bonjour <strong>${user.prenom} ${user.nom}</strong>,</p>
+    <p>Un compte vient d'être créé pour vous sur la plateforme Billetterie Intelligente.</p>
+    <p>Votre compte est actuellement en attente d'activation par un administrateur. Vous recevrez un e-mail séparé avec vos identifiants de connexion dès que votre compte sera activé.</p>
+    <p>Cordialement,<br>L'équipe Billetterie Intelligente</p>
+  `;
+
+  try {
+    await sendEmail(user.email, 'Votre compte a été créé', contenuEmail);
+  } catch (error) {
+    // La création du compte ne doit pas échouer si seul l'envoi de l'e-mail échoue.
+    console.error(`Échec de l'envoi de l'e-mail de création à ${user.email} : ${error.message}`);
+  }
+};
+
 // Parse un buffer CSV en tableau d'objets ligne, en gérant virgules/guillemets correctement
 const parserCSV = (buffer) => {
   return new Promise((resolve, reject) => {
@@ -52,6 +73,8 @@ const creerUtilisateur = async (req, res) => {
       motDePasse: hash,
       statut: 'bloque',
     });
+
+    await envoyerEmailCompteCree(user);
 
     const userSansMotDePasse = user.toObject();
     delete userSansMotDePasse.motDePasse;
@@ -113,7 +136,7 @@ const importerUtilisateursCSV = async (req, res) => {
         const motDePasseTemp = generatePassword(8);
         const hash = await bcrypt.hash(motDePasseTemp, 10);
 
-        await User.create({
+        const user = await User.create({
           nom,
           prenom,
           email,
@@ -122,6 +145,8 @@ const importerUtilisateursCSV = async (req, res) => {
           motDePasse: hash,
           statut: 'bloque',
         });
+
+        await envoyerEmailCompteCree(user);
 
         success++;
       } catch (err) {

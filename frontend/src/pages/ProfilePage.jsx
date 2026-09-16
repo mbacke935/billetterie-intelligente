@@ -201,7 +201,7 @@ const ProfilePage = () => {
             <form onSubmit={handleUpdateInfos} className="profile-form">
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Nom</label>
+                  <label className="form-label">Nom<span className="required-mark">*</span></label>
                   <input
                     type="text"
                     className="form-input"
@@ -211,7 +211,7 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Prénom</label>
+                  <label className="form-label">Prénom<span className="required-mark">*</span></label>
                   <input
                     type="text"
                     className="form-input"
@@ -223,7 +223,7 @@ const ProfilePage = () => {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Email</label>
+                  <label className="form-label">Email<span className="required-mark">*</span></label>
                   <input
                     type="email"
                     className="form-input"
@@ -233,7 +233,7 @@ const ProfilePage = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Téléphone</label>
+                  <label className="form-label">Téléphone<span className="required-mark">*</span></label>
                   <input
                     type="tel"
                     className="form-input"
@@ -266,7 +266,7 @@ const ProfilePage = () => {
                 };
                 return (
                   <div className="form-group" key={field}>
-                    <label className="form-label">{labels[field]}</label>
+                    <label className="form-label">{labels[field]}<span className="required-mark">*</span></label>
                     <div className="input-icon-wrapper">
                       <Lock size={18} className="input-icon" />
                       <input

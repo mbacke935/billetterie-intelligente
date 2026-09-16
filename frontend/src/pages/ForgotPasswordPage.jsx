@@ -48,7 +48,7 @@ const ForgotPasswordPage = () => {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Email<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Mail size={18} className="input-icon" />
               <input

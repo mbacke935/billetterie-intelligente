@@ -65,7 +65,7 @@ const RegisterPage = () => {
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="form-group">
-              <label className="form-label">Prénom</label>
+              <label className="form-label">Prénom<span className="required-mark">*</span></label>
               <div className="input-icon-wrapper">
                 <User size={18} className="input-icon" />
                 <input
@@ -81,7 +81,7 @@ const RegisterPage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Nom</label>
+              <label className="form-label">Nom<span className="required-mark">*</span></label>
               <div className="input-icon-wrapper">
                 <User size={18} className="input-icon" />
                 <input
@@ -98,7 +98,7 @@ const RegisterPage = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Email<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Mail size={18} className="input-icon" />
               <input
@@ -114,7 +114,7 @@ const RegisterPage = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Téléphone</label>
+            <label className="form-label">Téléphone<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Phone size={18} className="input-icon" />
               <input
@@ -130,7 +130,7 @@ const RegisterPage = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Mot de passe</label>
+            <label className="form-label">Mot de passe<span className="required-mark">*</span></label>
             <div className="input-icon-wrapper">
               <Lock size={18} className="input-icon" />
               <input

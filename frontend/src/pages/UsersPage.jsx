@@ -129,7 +129,7 @@ const UsersPage = () => {
             <RefreshCw size={16} /> Actualiser
           </button>
           <button className="btn btn-secondary" onClick={() => setShowImport(true)}>
-            <Upload size={16} /> Importer CSV
+            <Upload size={16} /> Ajouter plusieurs utilisateurs
           </button>
           <button className="btn btn-primary" onClick={() => setShowForm(true)}>
             <Plus size={16} /> Ajouter
