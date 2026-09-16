@@ -4,13 +4,23 @@ import { CheckCircle, XCircle, Trash2, MoreVertical } from 'lucide-react';
 const statutBadge = {
   actif: 'badge-green',
   bloque: 'badge-orange',
-  supprime: 'badge-red',
 };
 
 const statutLabel = {
   actif: 'Actif',
   bloque: 'Bloqué',
-  supprime: 'Supprimé',
+};
+
+const roleBadge = {
+  admin: 'badge-purple',
+  agent: 'badge-blue',
+  client: 'badge-green',
+};
+
+const roleLabel = {
+  admin: 'Admin',
+  agent: 'Agent',
+  client: 'Client',
 };
 
 const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, onBloquerGroupe, onSupprimerGroupe }) => {
@@ -34,9 +44,17 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
   const handleGroupAction = async (action) => {
     if (selectedIds.length === 0) return;
 
-    if (action === 'activer') await onActiverGroupe(selectedIds);
-    else if (action === 'bloquer') await onBloquerGroupe(selectedIds);
-    else if (action === 'supprimer') await onSupprimerGroupe(selectedIds);
+    if (action === 'activer') {
+      await onActiverGroupe(selectedIds);
+    } else if (action === 'bloquer') {
+      await onBloquerGroupe(selectedIds);
+    } else if (action === 'supprimer') {
+      const confirme = window.confirm(
+        `Supprimer définitivement ${selectedIds.length} compte(s) ? Cette action est irréversible et effacera toutes leurs informations.`
+      );
+      if (!confirme) return;
+      await onSupprimerGroupe(selectedIds);
+    }
 
     setSelectedIds([]);
   };
@@ -74,6 +92,7 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
             <th>Prénom</th>
             <th>Email</th>
             <th>Téléphone</th>
+            <th>Rôle</th>
             <th>Statut</th>
             <th>Actions</th>
           </tr>
@@ -81,7 +100,7 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
         <tbody>
           {users.length === 0 ? (
             <tr>
-              <td colSpan="7" className="table-empty">Aucun utilisateur trouvé.</td>
+              <td colSpan="8" className="table-empty">Aucun utilisateur trouvé.</td>
             </tr>
           ) : (
             users.map((user) => (
@@ -98,6 +117,11 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
                 <td>{user.prenom}</td>
                 <td>{user.email}</td>
                 <td>{user.telephone}</td>
+                <td>
+                  <span className={`badge ${roleBadge[user.role] || ''}`}>
+                    {roleLabel[user.role] || user.role}
+                  </span>
+                </td>
                 <td>
                   <span className={`badge ${statutBadge[user.statut] || ''}`}>
                     {statutLabel[user.statut] || user.statut}
@@ -129,14 +153,17 @@ const UserTable = ({ users, onActiver, onBloquer, onSupprimer, onActiverGroupe, 
                             <XCircle size={14} /> Bloquer
                           </button>
                         )}
-                        {user.statut !== 'supprime' && (
-                          <button
-                            className="dropdown-item dropdown-item-danger"
-                            onClick={() => { onSupprimer(user._id); setOpenMenuId(null); }}
-                          >
-                            <Trash2 size={14} /> Supprimer
-                          </button>
-                        )}
+                        <button
+                          className="dropdown-item dropdown-item-danger"
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            if (window.confirm('Supprimer définitivement ce compte ? Cette action est irréversible et effacera toutes ses informations.')) {
+                              onSupprimer(user._id);
+                            }
+                          }}
+                        >
+                          <Trash2 size={14} /> Supprimer
+                        </button>
                       </div>
                     )}
                   </div>

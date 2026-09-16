@@ -6,12 +6,10 @@ import api from '../services/api';
 const ChangerMotDePassePage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    ancienMotDePasse: '',
     nouveauMotDePasse: '',
     confirmerMotDePasse: '',
   });
   const [showPasswords, setShowPasswords] = useState({
-    ancien: false,
     nouveau: false,
     confirmer: false,
   });
@@ -39,7 +37,6 @@ const ChangerMotDePassePage = () => {
     setLoading(true);
     try {
       await api.put('/profile/password', {
-        ancienMotDePasse: formData.ancienMotDePasse,
         nouveauMotDePasse: formData.nouveauMotDePasse,
       });
       navigate('/');
@@ -76,30 +73,6 @@ const ChangerMotDePassePage = () => {
         {error && <div className="alert alert-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="login-form">
-
-          {/* Mot de passe temporaire */}
-          <div className="form-group">
-            <label className="form-label">Mot de passe temporaire</label>
-            <div className="input-icon-wrapper">
-              <Lock size={18} className="input-icon" />
-              <input
-                type={showPasswords.ancien ? 'text' : 'password'}
-                name="ancienMotDePasse"
-                className="form-input form-input-icon"
-                placeholder="••••••••"
-                value={formData.ancienMotDePasse}
-                onChange={handleChange}
-                required
-              />
-              <button
-                type="button"
-                className="input-icon-right"
-                onClick={() => toggleShow('ancien')}
-              >
-                {showPasswords.ancien ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
 
           {/* Nouveau mot de passe */}
           <div className="form-group">

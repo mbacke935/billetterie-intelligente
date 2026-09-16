@@ -8,7 +8,6 @@ const getStatistiques = async(req, res) => {
             total: await User.countDocuments({ role: 'admin' }),
             actifs: await User.countDocuments({ role: 'admin', statut: 'actif' }),
             bloques: await User.countDocuments({ role: 'admin', statut: 'bloque' }),
-            supprimes: await User.countDocuments({ role: 'admin', statut: 'supprime' }),
         };
 
         // Statistiques des agents
@@ -16,7 +15,6 @@ const getStatistiques = async(req, res) => {
             total: await User.countDocuments({ role: 'agent' }),
             actifs: await User.countDocuments({ role: 'agent', statut: 'actif' }),
             bloques: await User.countDocuments({ role: 'agent', statut: 'bloque' }),
-            supprimes: await User.countDocuments({ role: 'agent', statut: 'supprime' }),
         };
 
         // Statistiques des clients
@@ -24,7 +22,6 @@ const getStatistiques = async(req, res) => {
             total: await User.countDocuments({ role: 'client' }),
             actifs: await User.countDocuments({ role: 'client', statut: 'actif' }),
             bloques: await User.countDocuments({ role: 'client', statut: 'bloque' }),
-            supprimes: await User.countDocuments({ role: 'client', statut: 'supprime' }),
         };
 
         // Statistiques globales
@@ -32,7 +29,6 @@ const getStatistiques = async(req, res) => {
             total: admins.total + agents.total + clients.total,
             actifs: admins.actifs + agents.actifs + clients.actifs,
             bloques: admins.bloques + agents.bloques + clients.bloques,
-            supprimes: admins.supprimes + agents.supprimes + clients.supprimes,
         };
 
         res.status(200).json({

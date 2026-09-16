@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema(
     },
     statut: {
       type: String,
-      enum: ['actif', 'bloque', 'supprime'],
+      enum: ['actif', 'bloque'],
       default: 'bloque',
     },
     premiereConnexion: {

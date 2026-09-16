@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AbonnementCard from '../components/AbonnementCard';
 import {
-  getAbonnementsByUser,
+  getAllAbonnements,
+  getTypesAbonnements,
+  getStatsAbonnements,
   suspendreAbonnement,
   resilierAbonnement,
   renouvelerAbonnement,
@@ -16,6 +18,9 @@ const statutMap = {
   'Suspendu': 'suspendu',
   'Résilie': 'resilié',
 };
+const statutMapInverse = Object.fromEntries(
+  Object.entries(statutMap).map(([backend, frontend]) => [frontend, backend])
+);
 
 // Mapper les noms de types vers les clés frontend
 const typeMap = {
@@ -29,93 +34,135 @@ const TICKETS_PAR_PAGE = 12;
 const AbonnementsPage = () => {
   const navigate = useNavigate();
   const [abonnements, setAbonnements] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [types, setTypes] = useState([]);
+  const [statsGlobal, setStatsGlobal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [statutFilter, setStatutFilter] = useState('');
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchClients = async () => {
-    try {
-      const res = await api.get('/users', { params: { role: 'client' } });
-      return res.data.users;
-    } catch {
-      return [];
-    }
-  };
-
-  const fetchAbonnements = async () => {
+  // La pagination est gérée côté serveur par le service abonnements (page/limit),
+  // qui ignore tout ce qui touche aux clients : on résout donc la recherche texte
+  // en identifiants clients via le Service Utilisateurs, puis on croise les deux.
+  const fetchAbonnements = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Récupérer tous les clients
-      const clientsList = await fetchClients();
-      setClients(clientsList);
+      const params = { page, limit: TICKETS_PAR_PAGE };
 
-      // Récupérer les abonnements de chaque client
-      const allAbonnements = [];
-      for (const client of clientsList) {
-        try {
-          const res = await getAbonnementsByUser(client._id);
-          const abonnementsClient = res.data.map((a) => ({
-            id: a.id,
-            client: `${client.prenom} ${client.nom}`,
-            email: client.email,
-            type: typeMap[a.typeAbonnement?.nom] || 'ticket_simple',
-            statut: statutMap[a.statut] || 'actif',
-            dateDebut: a.date_debut,
-            dateExpiration: a.date_expiration,
-            voyagesAutorises: a.typeAbonnement?.voyages_initiaux,
-            voyagesConsommes: a.voyages_consommes,
-            voyagesRestants: a.voyages_restants === -1 ? null : a.voyages_restants,
-          }));
-          allAbonnements.push(...abonnementsClient);
-        } catch {
-          // Ce client n'a pas d'abonnement, on continue
-        }
+      if (statutFilter && statutMapInverse[statutFilter]) {
+        params.statut = statutMapInverse[statutFilter];
       }
-      setAbonnements(allAbonnements);
+
+      if (typeFilter) {
+        const idsCorrespondants = types
+          .filter((t) => typeMap[t.nom] === typeFilter)
+          .map((t) => t.id);
+        if (idsCorrespondants.length === 0) {
+          setAbonnements([]);
+          setTotal(0);
+          setTotalPages(1);
+          return;
+        }
+        params.type_abonnement_id = idsCorrespondants.join(',');
+      }
+
+      let clientsMap = {};
+      if (search) {
+        const resClients = await api.get('/users', { params: { role: 'client', search } });
+        const clientsTrouves = resClients.data.users;
+        if (clientsTrouves.length === 0) {
+          setAbonnements([]);
+          setTotal(0);
+          setTotalPages(1);
+          return;
+        }
+        params.user_ids = clientsTrouves.map((c) => c._id).join(',');
+        clientsMap = Object.fromEntries(clientsTrouves.map((c) => [c._id, c]));
+      }
+
+      const res = await getAllAbonnements(params);
+      const { total: totalCount, totalPages: totalPagesRes, abonnements: rows } = res.data;
+
+      // Compléter les infos client manquantes (hors cas de la recherche, déjà résolue ci-dessus)
+      const idsManquants = [...new Set(rows.map((a) => a.user_id))].filter((id) => !clientsMap[id]);
+      if (idsManquants.length > 0) {
+        const resUsers = await api.get('/users', { params: { ids: idsManquants.join(',') } });
+        resUsers.data.users.forEach((u) => { clientsMap[u._id] = u; });
+      }
+
+      const mapped = rows.map((a) => {
+        const client = clientsMap[a.user_id];
+        return {
+          id: a.id,
+          client: client ? `${client.prenom} ${client.nom}` : 'Client inconnu',
+          email: client?.email || '—',
+          type: typeMap[a.typeAbonnement?.nom] || 'ticket_simple',
+          statut: statutMap[a.statut] || 'actif',
+          dateDebut: a.date_debut,
+          dateExpiration: a.date_expiration,
+          // Le nombre de voyages autorisés est propre à cet abonnement (il peut avoir été
+          // personnalisé à l'attribution) : on le déduit du solde réel plutôt que de la
+          // valeur par défaut de la formule.
+          voyagesAutorises: a.voyages_restants === -1 ? null : a.voyages_consommes + a.voyages_restants,
+          voyagesConsommes: a.voyages_consommes,
+          voyagesRestants: a.voyages_restants === -1 ? null : a.voyages_restants,
+        };
+      });
+
+      setAbonnements(mapped);
+      setTotal(totalCount);
+      setTotalPages(Math.max(1, totalPagesRes));
     } catch (err) {
       setError('Impossible de charger les abonnements. Vérifiez que le service abonnements est démarré sur le port 5001.');
     } finally {
       setLoading(false);
     }
+  }, [page, typeFilter, statutFilter, search, types]);
+
+  const fetchStats = async () => {
+    try {
+      const res = await getStatsAbonnements();
+      setStatsGlobal(res.data);
+    } catch {
+      // Statistiques secondaires : on n'affiche pas d'erreur bloquante si indisponibles.
+    }
   };
 
   useEffect(() => {
-    fetchAbonnements();
+    getTypesAbonnements().then((res) => setTypes(res.data)).catch(() => {});
+    fetchStats();
   }, []);
 
-  const filtered = abonnements.filter((a) => {
-    const matchType = typeFilter ? a.type === typeFilter : true;
-    const matchStatut = statutFilter ? a.statut === statutFilter : true;
-    const matchSearch = search
-      ? a.client.toLowerCase().includes(search.toLowerCase()) ||
-        a.email.toLowerCase().includes(search.toLowerCase())
-      : true;
-    return matchType && matchStatut && matchSearch;
-  });
-
-  // Revenir à la première page à chaque changement de filtre/recherche
-  // ou de jeu de données, pour éviter une page vide hors bornes.
+  // Revenir à la première page à chaque changement de filtre/recherche,
+  // pour éviter de rester sur une page hors bornes.
   useEffect(() => {
     setPage(1);
-  }, [typeFilter, statutFilter, search, abonnements.length]);
+  }, [typeFilter, statutFilter, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / TICKETS_PAR_PAGE));
-  const pageCourante = Math.min(page, totalPages);
-  const paginated = filtered.slice(
-    (pageCourante - 1) * TICKETS_PAR_PAGE,
-    pageCourante * TICKETS_PAR_PAGE
-  );
+  // Requête serveur à chaque changement de page/filtre, avec un léger debounce
+  // sur la recherche pour éviter une requête par frappe clavier.
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetchAbonnements();
+    }, search ? 300 : 0);
+    return () => clearTimeout(timeout);
+  }, [fetchAbonnements]);
+
+  const refresh = () => {
+    fetchAbonnements();
+    fetchStats();
+  };
 
   const handleSuspendre = async (id) => {
     try {
       await suspendreAbonnement(id);
-      fetchAbonnements();
+      refresh();
     } catch (err) {
       console.error('Erreur suspension:', err);
     }
@@ -124,7 +171,7 @@ const AbonnementsPage = () => {
   const handleResilier = async (id) => {
     try {
       await resilierAbonnement(id);
-      fetchAbonnements();
+      refresh();
     } catch (err) {
       console.error('Erreur résiliation:', err);
     }
@@ -133,10 +180,15 @@ const AbonnementsPage = () => {
   const handleRenouveler = async (id) => {
     try {
       await renouvelerAbonnement(id);
-      fetchAbonnements();
+      refresh();
     } catch (err) {
       console.error('Erreur renouvellement:', err);
     }
+  };
+
+  const compterParStatut = (statutBackend) => {
+    const entree = statsGlobal?.repartition_par_statut?.find((s) => s.statut === statutBackend);
+    return entree ? Number(entree.total) : 0;
   };
 
   return (
@@ -147,7 +199,7 @@ const AbonnementsPage = () => {
           <p className="page-subtitle">Gestion des abonnements et tickets</p>
         </div>
         <div className="page-actions">
-          <button className="btn btn-secondary" onClick={fetchAbonnements}>
+          <button className="btn btn-secondary" onClick={refresh}>
             <RefreshCw size={16} /> Actualiser
           </button>
           <button
@@ -204,13 +256,13 @@ const AbonnementsPage = () => {
         </div>
       </div>
 
-      {/* Stats rapides */}
+      {/* Stats rapides (indicateurs globaux, indépendants de la pagination) */}
       <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total', count: abonnements.length, color: '#1C7293' },
-          { label: 'Actifs', count: abonnements.filter(a => a.statut === 'actif').length, color: '#38A169' },
-          { label: 'Suspendus', count: abonnements.filter(a => a.statut === 'suspendu').length, color: '#DD6B20' },
-          { label: 'Résiliés', count: abonnements.filter(a => a.statut === 'resilié').length, color: '#E53E3E' },
+          { label: 'Total', count: statsGlobal?.indicateurs?.total_abonnements ?? 0, color: '#1C7293' },
+          { label: 'Actifs', count: compterParStatut('Actif'), color: '#38A169' },
+          { label: 'Suspendus', count: compterParStatut('Suspendu'), color: '#DD6B20' },
+          { label: 'Résiliés', count: compterParStatut('Résilie'), color: '#E53E3E' },
         ].map((s) => (
           <div key={s.label} className="stats-card" style={{ borderLeft: `4px solid ${s.color}` }}>
             <div className="stats-card-content">
@@ -227,7 +279,7 @@ const AbonnementsPage = () => {
           <div className="loading-spinner" />
           <p>Chargement des abonnements...</p>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : abonnements.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>
           Aucun abonnement trouvé.
         </div>
@@ -238,7 +290,7 @@ const AbonnementsPage = () => {
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: '0.9rem',
           }}>
-            {paginated.map((abonnement) => (
+            {abonnements.map((abonnement) => (
               <AbonnementCard
                 key={abonnement.id}
                 abonnement={abonnement}
@@ -260,17 +312,17 @@ const AbonnementsPage = () => {
               <button
                 className="btn btn-secondary"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={pageCourante === 1}
+                disabled={page === 1}
               >
                 <ChevronLeft size={16} /> Précédent
               </button>
               <span style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
-                Page {pageCourante} sur {totalPages} ({filtered.length} ticket{filtered.length > 1 ? 's' : ''})
+                Page {page} sur {totalPages} ({total} ticket{total > 1 ? 's' : ''})
               </span>
               <button
                 className="btn btn-secondary"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={pageCourante === totalPages}
+                disabled={page === totalPages}
               >
                 Suivant <ChevronRight size={16} />
               </button>

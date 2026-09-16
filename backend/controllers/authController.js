@@ -20,10 +20,6 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
     }
 
-    if (user.statut === 'supprime') {
-      return res.status(403).json({ message: 'Ce compte a été supprimé.' });
-    }
-
     if (user.statut === 'bloque') {
       return res.status(403).json({ message: 'Ce compte est bloqué. Contactez un administrateur.' });
     }

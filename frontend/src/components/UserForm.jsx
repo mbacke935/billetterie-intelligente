@@ -105,16 +105,20 @@ const UserForm = ({ onSubmit, onClose, roleDefaut = 'client' }) => {
             </div>
           </div>
 
-          {/* Rôle en lecture seule — déterminé par la page */}
+          {/* Rôle */}
           <div className="form-group">
             <label className="form-label">Rôle</label>
-            <input
-              type="text"
+            <select
+              name="role"
               className="form-input"
-              value={roleLabels[roleDefaut]}
-              readOnly
-              style={{ backgroundColor: 'var(--bg-secondary, #f1f5f9)', cursor: 'not-allowed', opacity: 0.8 }}
-            />
+              value={formData.role}
+              onChange={handleChange}
+              required
+            >
+              {Object.entries(roleLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="form-actions">

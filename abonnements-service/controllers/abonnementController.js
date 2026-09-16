@@ -9,7 +9,7 @@ const USER_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 // Attribuer un abonnement à un utilisateur
 exports.attribuerAbonnement = async (req, res) => {
   try {
-    const { user_id, type_abonnement_id } = req.body;
+    const { user_id, type_abonnement_id, voyages_personnalises } = req.body;
 
     if (!user_id || !type_abonnement_id) {
       return res.status(400).json({ message: 'user_id et type_abonnement_id sont requis.' });
@@ -26,12 +26,24 @@ exports.attribuerAbonnement = async (req, res) => {
       return res.status(400).json({ message: 'Cette formule d\'abonnement a été archivée et ne peut plus être attribuée.' });
     }
 
+    // Pour une formule "Limité", l'administrateur peut personnaliser le nombre de
+    // voyages accordés pour cet abonnement précis, au lieu de reprendre la valeur
+    // par défaut de la formule (type.voyages_initiaux).
+    if (voyages_personnalises !== undefined && type.nom !== 'Limité') {
+      return res.status(400).json({ message: 'Un nombre de voyages personnalisé ne peut être défini que pour une formule "Limité".' });
+    }
+    if (voyages_personnalises !== undefined && (!Number.isInteger(voyages_personnalises) || voyages_personnalises < 1)) {
+      return res.status(400).json({ message: 'Le nombre de voyages personnalisé doit être un entier positif.' });
+    }
+
     const dateDebut = new Date();
     const dateExpiration = new Date();
     dateExpiration.setDate(dateDebut.getDate() + type.duree_validite);
 
     // Si illimité, voyages_restants est défini à -1
-    const voyagesRestants = type.nom === 'Illimité' ? -1 : (type.voyages_initiaux || 0);
+    const voyagesRestants = type.nom === 'Illimité'
+      ? -1
+      : (voyages_personnalises ?? type.voyages_initiaux ?? 0);
 
     const nouvelAbonnement = await Abonnement.create({
       user_id,
@@ -258,6 +270,7 @@ exports.getAllAbonnements = async (req, res) => {
   try {
     const {
       user_id,
+      user_ids,
       statut,
       type_abonnement_id,
       date_debut_min,
@@ -273,11 +286,18 @@ exports.getAllAbonnements = async (req, res) => {
     if (user_id) {
       whereClause.user_id = user_id;
     }
+    // user_ids : liste d'identifiants séparés par des virgules (ex. résultat d'une
+    // recherche par nom/email côté Service Utilisateurs, à croiser avec les abonnements).
+    if (user_ids) {
+      const ids = String(user_ids).split(',').map((id) => id.trim()).filter(Boolean);
+      whereClause.user_id = { [Op.in]: ids };
+    }
     if (statut) {
       whereClause.statut = statut;
     }
     if (type_abonnement_id) {
-      whereClause.type_abonnement_id = type_abonnement_id;
+      const ids = String(type_abonnement_id).split(',').map((id) => id.trim()).filter(Boolean);
+      whereClause.type_abonnement_id = ids.length > 1 ? { [Op.in]: ids } : ids[0];
     }
 
     // Filtre plages de dates début

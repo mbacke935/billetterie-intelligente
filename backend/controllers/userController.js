@@ -144,7 +144,7 @@ const importerUtilisateursCSV = async (req, res) => {
 // GET /api/users - Consulter la liste des utilisateurs (avec filtres)
 const listerUtilisateurs = async(req, res) => {
     try {
-        const { role, statut, email, telephone, id, search } = req.query;
+        const { role, statut, email, telephone, id, ids, search } = req.query;
         const filtre = {};
 
         if (role) filtre.role = role;
@@ -152,6 +152,12 @@ const listerUtilisateurs = async(req, res) => {
         if (email) filtre.email = email;
         if (telephone) filtre.telephone = telephone;
         if (id) filtre._id = id;
+        // ids : liste d'identifiants séparés par des virgules, pour récupérer en un
+        // seul appel les utilisateurs correspondant à un lot d'abonnements par exemple.
+        if (ids) {
+            const idsValides = ids.split(',').map((v) => v.trim()).filter((v) => /^[0-9a-fA-F]{24}$/.test(v));
+            filtre._id = { $in: idsValides };
+        }
 
         // Recherche libre côté serveur : nom, prénom, email, téléphone (et identifiant si valide)
         if (search) {
@@ -258,18 +264,16 @@ const bloquerUtilisateur = async(req, res) => {
     }
 };
 
-// DELETE /api/users/:id - Supprimer un compte
+// DELETE /api/users/:id - Supprimer définitivement un compte
 const supprimerUtilisateur = async(req, res) => {
     try {
-        const user = await User.findByIdAndUpdate(
-            req.params.id, { statut: 'supprime' }, { new: true }
-        ).select('-motDePasse');
+        const user = await User.findByIdAndDelete(req.params.id).select('-motDePasse');
 
         if (!user) {
             return res.status(404).json({ message: 'Utilisateur non trouvé.' });
         }
 
-        res.status(200).json({ message: 'Compte supprimé.', user });
+        res.status(200).json({ message: 'Compte supprimé définitivement.', user });
     } catch (error) {
         res.status(500).json({ message: 'Erreur serveur.', error: error.message });
     }
@@ -333,15 +337,15 @@ const bloquerGroupe = async(req, res) => {
     }
 };
 
-// DELETE /api/users/groupe/supprimer - Supprimer plusieurs comptes
+// DELETE /api/users/groupe/supprimer - Supprimer définitivement plusieurs comptes
 const supprimerGroupe = async(req, res) => {
     try {
         const { ids } = req.body;
 
-        const result = await User.updateMany({ _id: { $in: ids } }, { statut: 'supprime' });
+        const result = await User.deleteMany({ _id: { $in: ids } });
 
         res.status(200).json({
-            message: `${result.modifiedCount} compte(s) supprimé(s).`,
+            message: `${result.deletedCount} compte(s) supprimé(s) définitivement.`,
         });
     } catch (error) {
         res.status(500).json({ message: 'Erreur serveur.', error: error.message });

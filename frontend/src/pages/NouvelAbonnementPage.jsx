@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, ArrowLeft, Save } from 'lucide-react';
+import { CreditCard, ArrowLeft, Save, Minus, Plus, Repeat } from 'lucide-react';
 import { getTypesAbonnements, creerAbonnement } from '../services/apiAbonnements';
 import api from '../services/api';
 
@@ -12,6 +12,7 @@ const NouvelAbonnementPage = () => {
     user_id: '',
     type_abonnement_id: '',
   });
+  const [voyagesPersonnalises, setVoyagesPersonnalises] = useState('');
   const [clientSearch, setClientSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -38,7 +39,24 @@ const NouvelAbonnementPage = () => {
   }, []);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    // À chaque changement de formule, réinitialiser le nombre de voyages
+    // personnalisé sur la valeur par défaut de la nouvelle formule sélectionnée.
+    if (name === 'type_abonnement_id') {
+      const nouveauType = types.find((t) => t.id === parseInt(value));
+      setVoyagesPersonnalises(
+        nouveauType?.nom === 'Limité' ? String(nouveauType.voyages_initiaux || 1) : ''
+      );
+    }
+  };
+
+  const ajusterVoyages = (delta) => {
+    setVoyagesPersonnalises((prev) => {
+      const actuel = parseInt(prev) || 0;
+      return String(Math.max(1, actuel + delta));
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -48,10 +66,16 @@ const NouvelAbonnementPage = () => {
     setSuccess('');
 
     try {
-      await creerAbonnement({
+      const payload = {
         user_id: formData.user_id,
         type_abonnement_id: parseInt(formData.type_abonnement_id),
-      });
+      };
+
+      if (typeSelectionne?.nom === 'Limité' && voyagesPersonnalises) {
+        payload.voyages_personnalises = parseInt(voyagesPersonnalises);
+      }
+
+      await creerAbonnement(payload);
       setSuccess('Abonnement créé avec succès !');
       setTimeout(() => navigate('/abonnements'), 1500);
     } catch (err) {
@@ -173,6 +197,49 @@ const NouvelAbonnementPage = () => {
             </select>
           </div>
 
+          {/* Nombre de voyages personnalisé — uniquement pour la formule "Limité" */}
+          {typeSelectionne?.nom === 'Limité' && (
+            <div className="form-group">
+              <label className="form-label">
+                Nombre de voyages pour cet abonnement
+              </label>
+              <div className="voyages-stepper">
+                <button
+                  type="button"
+                  className="voyages-stepper-btn"
+                  onClick={() => ajusterVoyages(-1)}
+                  aria-label="Diminuer le nombre de voyages"
+                >
+                  <Minus size={16} />
+                </button>
+                <div className="voyages-stepper-value">
+                  <Repeat size={16} className="voyages-stepper-icon" />
+                  <input
+                    type="number"
+                    min="1"
+                    className="voyages-stepper-input"
+                    value={voyagesPersonnalises}
+                    onChange={(e) => setVoyagesPersonnalises(e.target.value)}
+                    required
+                  />
+                  <span>voyage(s)</span>
+                </div>
+                <button
+                  type="button"
+                  className="voyages-stepper-btn"
+                  onClick={() => ajusterVoyages(1)}
+                  aria-label="Augmenter le nombre de voyages"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              <p className="voyages-stepper-hint">
+                Par défaut, la formule « {typeSelectionne.nom} » accorde {typeSelectionne.voyages_initiaux || 1} voyage(s).
+                Vous pouvez personnaliser ce nombre pour ce client uniquement.
+              </p>
+            </div>
+          )}
+
           {/* Résumé */}
           {typeSelectionne && (
             <div style={{
@@ -194,7 +261,9 @@ const NouvelAbonnementPage = () => {
               </p>
               <p style={{ margin: '0.2rem 0' }}>
                 Voyages : <strong style={{ color: '#CBD5E1' }}>
-                  {typeSelectionne.voyages_initiaux ? typeSelectionne.voyages_initiaux : 'Illimité'}
+                  {typeSelectionne.nom === 'Illimité'
+                    ? 'Illimité'
+                    : (parseInt(voyagesPersonnalises) || typeSelectionne.voyages_initiaux || 0)}
                 </strong>
               </p>
               <p style={{ margin: '0.2rem 0' }}>

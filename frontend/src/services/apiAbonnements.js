@@ -18,6 +18,7 @@ export const getTypesAbonnements = () => apiAbonnements.get('/type-abonnements')
 export const creerTypeAbonnement = (data) => apiAbonnements.post('/type-abonnements', data);
 
 // ── Abonnements ──────────────────────────────────────────────
+export const getAllAbonnements = (params) => apiAbonnements.get('/abonnements', { params });
 export const getAbonnementsByUser = (userId) => apiAbonnements.get(`/abonnements/user/${userId}`);
 export const getAbonnementById = (id) => apiAbonnements.get(`/abonnements/${id}`);
 export const getAbonnementQrCode = (id) => apiAbonnements.get(`/abonnements/${id}/qrcode`);
@@ -36,6 +37,6 @@ export const getVoyagesByUser = (userId) => apiAbonnements.get(`/voyages/user/${
 export const getVoyagesByAbonnement = (id) => apiAbonnements.get(`/voyages/abonnement/${id}`);
 
 // ── Statistiques ─────────────────────────────────────────────
-export const getStatsAbonnements = () => apiAbonnements.get('/stats');
+export const getStatsAbonnements = () => apiAbonnements.get('/stats/global');
 
 export default apiAbonnements;

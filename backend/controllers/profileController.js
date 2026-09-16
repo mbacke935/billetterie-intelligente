@@ -57,8 +57,8 @@ const changePassword = async (req, res) => {
     try {
         const { ancienMotDePasse, nouveauMotDePasse } = req.body;
 
-        if (!ancienMotDePasse || !nouveauMotDePasse) {
-            return res.status(400).json({ message: 'Ancien et nouveau mot de passe requis.' });
+        if (!nouveauMotDePasse) {
+            return res.status(400).json({ message: 'Le nouveau mot de passe est requis.' });
         }
 
         if (nouveauMotDePasse.length < 6) {
@@ -68,10 +68,19 @@ const changePassword = async (req, res) => {
         // Récupérer l'utilisateur avec le mot de passe
         const user = await User.findById(req.user._id);
 
-        // Vérifier l'ancien mot de passe
-        const motDePasseValide = await bcrypt.compare(ancienMotDePasse, user.motDePasse);
-        if (!motDePasseValide) {
-            return res.status(401).json({ message: 'Ancien mot de passe incorrect.' });
+        // Lors de la première connexion, l'utilisateur vient déjà de s'authentifier
+        // avec le mot de passe temporaire reçu par e-mail : inutile de le lui redemander.
+        // Dans les autres cas (changement volontaire depuis le profil), l'ancien mot
+        // de passe reste requis pour confirmer l'identité.
+        if (!user.premiereConnexion) {
+            if (!ancienMotDePasse) {
+                return res.status(400).json({ message: 'Ancien mot de passe requis.' });
+            }
+
+            const motDePasseValide = await bcrypt.compare(ancienMotDePasse, user.motDePasse);
+            if (!motDePasseValide) {
+                return res.status(401).json({ message: 'Ancien mot de passe incorrect.' });
+            }
         }
 
         // Hasher le nouveau mot de passe

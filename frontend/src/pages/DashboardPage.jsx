@@ -47,7 +47,6 @@ const DashboardPage = () => {
           <StatsCard type="total" count={stats?.global?.total || 0} />
           <StatsCard type="actifs" count={stats?.global?.actifs || 0} />
           <StatsCard type="bloques" count={stats?.global?.bloques || 0} />
-          <StatsCard type="supprimes" count={stats?.global?.supprimes || 0} />
         </div>
       </section>
 
@@ -61,7 +60,6 @@ const DashboardPage = () => {
             <StatsCard type="total" count={stats?.admins?.total || 0} />
             <StatsCard type="actifs" count={stats?.admins?.actifs || 0} />
             <StatsCard type="bloques" count={stats?.admins?.bloques || 0} />
-            <StatsCard type="supprimes" count={stats?.admins?.supprimes || 0} />
           </div>
         </section>
 
@@ -73,7 +71,6 @@ const DashboardPage = () => {
             <StatsCard type="total" count={stats?.agents?.total || 0} />
             <StatsCard type="actifs" count={stats?.agents?.actifs || 0} />
             <StatsCard type="bloques" count={stats?.agents?.bloques || 0} />
-            <StatsCard type="supprimes" count={stats?.agents?.supprimes || 0} />
           </div>
         </section>
 
@@ -85,7 +82,6 @@ const DashboardPage = () => {
             <StatsCard type="total" count={stats?.clients?.total || 0} />
             <StatsCard type="actifs" count={stats?.clients?.actifs || 0} />
             <StatsCard type="bloques" count={stats?.clients?.bloques || 0} />
-            <StatsCard type="supprimes" count={stats?.clients?.supprimes || 0} />
           </div>
         </section>
       </div>

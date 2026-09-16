@@ -196,18 +196,18 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
         });
     });
 
-    describe('DELETE /api/users/:id (Suppression logique)', () => {
-        test('devrait effectuer une suppression logique et renvoyer 200', async () => {
+    describe('DELETE /api/users/:id (Suppression définitive)', () => {
+        test('devrait supprimer définitivement le compte et renvoyer 200', async () => {
             const res = await request(app)
                 .delete(`/api/users/${createdUserId}`)
                 .set('Authorization', `Bearer ${adminToken}`);
 
             expect(res.status).toBe(200);
-            expect(res.body.user.statut).toBe('supprime');
+            expect(res.body.message).toMatch(/supprimé/i);
 
-            // Vérifier en BDD
+            // Vérifier en BDD : le document n'existe plus
             const deletedUser = await User.findById(createdUserId);
-            expect(deletedUser.statut).toBe('supprime');
+            expect(deletedUser).toBeNull();
         });
     });
 });

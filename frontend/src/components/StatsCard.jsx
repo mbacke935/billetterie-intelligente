@@ -1,24 +1,21 @@
-import { Users, UserCheck, UserX, UserMinus } from 'lucide-react';
+import { Users, UserCheck, UserX } from 'lucide-react';
 
 const iconMap = {
   total: Users,
   actifs: UserCheck,
   bloques: UserX,
-  supprimes: UserMinus,
 };
 
 const colorMap = {
   total: 'stats-card-blue',
   actifs: 'stats-card-green',
   bloques: 'stats-card-orange',
-  supprimes: 'stats-card-red',
 };
 
 const labelMap = {
   total: 'Total',
   actifs: 'Actifs',
   bloques: 'Bloqués',
-  supprimes: 'Supprimés',
 };
 
 const StatsCard = ({ type, count }) => {
