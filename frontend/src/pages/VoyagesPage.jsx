@@ -185,7 +185,7 @@ const VoyagesPage = () => {
               >
                 <ChevronLeft size={16} /> Précédent
               </button>
-              <span style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 Page {page} sur {totalPages} ({total} validation{total > 1 ? 's' : ''})
               </span>
               <button

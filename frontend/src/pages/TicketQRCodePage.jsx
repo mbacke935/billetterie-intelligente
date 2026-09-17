@@ -230,7 +230,7 @@ const TicketQRCodePage = () => {
                 }}>
                   {item.num}
                 </div>
-                <p style={{ margin: 0, color: '#94A3B8', fontSize: '0.9rem' }}>{item.text}</p>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{item.text}</p>
               </div>
             ))}
           </div>

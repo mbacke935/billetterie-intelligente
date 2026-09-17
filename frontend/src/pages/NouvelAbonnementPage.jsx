@@ -172,7 +172,7 @@ const NouvelAbonnementPage = () => {
         )}
 
         <form onSubmit={handleSubmit} style={{
-          background: 'var(--bg-card, #1e293b)',
+          background: 'var(--bg-secondary)',
           borderRadius: '12px',
           padding: '1.5rem',
           display: 'flex',
@@ -275,24 +275,24 @@ const NouvelAbonnementPage = () => {
           {/* Résumé */}
           {typeSelectionne && (
             <div style={{
-              background: 'var(--bg-secondary, #0f172a)',
+              background: 'var(--bg-tertiary)',
               borderRadius: '8px',
               padding: '1rem',
               fontSize: '0.875rem',
-              color: '#64748B',
+              color: 'var(--text-secondary)',
             }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', color: '#CBD5E1' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                 <CreditCard size={14} style={{ marginRight: '0.3rem' }} />
                 Résumé
               </p>
               <p style={{ margin: '0.2rem 0' }}>
-                Type : <strong style={{ color: '#CBD5E1' }}>{typeSelectionne.nom}</strong>
+                Type : <strong style={{ color: 'var(--text-primary)' }}>{typeSelectionne.nom}</strong>
               </p>
               <p style={{ margin: '0.2rem 0' }}>
-                Durée : <strong style={{ color: '#CBD5E1' }}>{typeSelectionne.duree_validite} jour(s)</strong>
+                Durée : <strong style={{ color: 'var(--text-primary)' }}>{typeSelectionne.duree_validite} jour(s)</strong>
               </p>
               <p style={{ margin: '0.2rem 0' }}>
-                Voyages : <strong style={{ color: '#CBD5E1' }}>
+                Voyages : <strong style={{ color: 'var(--text-primary)' }}>
                   {typeSelectionne.nom === 'Illimité'
                     ? 'Illimité'
                     : (parseInt(voyagesPersonnalises) || typeSelectionne.voyages_initiaux || 0)}
@@ -301,7 +301,7 @@ const NouvelAbonnementPage = () => {
               <p style={{ margin: '0.2rem 0' }}>
                 Tarif : <strong style={{ color: '#02C39A' }}>{prixAffiche} FCFA</strong>
                 {typeSelectionne.nom === 'Limité' && (
-                  <span style={{ color: 'var(--text-muted, #64748B)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
                     {' '}({Math.round(typeSelectionne.tarif / (typeSelectionne.voyages_initiaux || 1))} FCFA/voyage)
                   </span>
                 )}

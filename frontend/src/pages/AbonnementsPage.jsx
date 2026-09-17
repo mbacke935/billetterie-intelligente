@@ -280,7 +280,7 @@ const AbonnementsPage = () => {
           <p>Chargement des abonnements...</p>
         </div>
       ) : abonnements.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
           Aucun abonnement trouvé.
         </div>
       ) : (
@@ -316,7 +316,7 @@ const AbonnementsPage = () => {
               >
                 <ChevronLeft size={16} /> Précédent
               </button>
-              <span style={{ color: '#94A3B8', fontSize: '0.9rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 Page {page} sur {totalPages} ({total} ticket{total > 1 ? 's' : ''})
               </span>
               <button
