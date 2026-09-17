@@ -29,21 +29,16 @@ exports.attribuerAbonnement = async (req, res) => {
       return res.status(400).json({ message: 'Cette formule d\'abonnement a été archivée et ne peut plus être attribuée.' });
     }
 
-    // La personnalisation du nombre de voyages est une action de gestion réservée à
-    // l'administrateur : un client qui s'abonne lui-même reçoit toujours la valeur par
-    // défaut de la formule choisie.
-    if (voyages_personnalises !== undefined && req.user.role === 'client') {
-      return res.status(403).json({ message: 'Seul un administrateur peut personnaliser le nombre de voyages accordés.' });
-    }
-
-    // Pour une formule "Limité", l'administrateur peut personnaliser le nombre de
-    // voyages accordés pour cet abonnement précis, au lieu de reprendre la valeur
-    // par défaut de la formule (type.voyages_initiaux).
+    // Pour une formule "Limité", le nombre de voyages accordés peut être personnalisé
+    // pour cet abonnement précis (au lieu de reprendre la valeur par défaut de la formule,
+    // type.voyages_initiaux) — que ce soit par un admin qui attribue l'abonnement, ou par
+    // un client qui choisit lui-même son nombre de voyages à la souscription.
+    const MAX_VOYAGES_PERSONNALISES = 500;
     if (voyages_personnalises !== undefined && type.nom !== 'Limité') {
       return res.status(400).json({ message: 'Un nombre de voyages personnalisé ne peut être défini que pour une formule "Limité".' });
     }
-    if (voyages_personnalises !== undefined && (!Number.isInteger(voyages_personnalises) || voyages_personnalises < 1)) {
-      return res.status(400).json({ message: 'Le nombre de voyages personnalisé doit être un entier positif.' });
+    if (voyages_personnalises !== undefined && (!Number.isInteger(voyages_personnalises) || voyages_personnalises < 1 || voyages_personnalises > MAX_VOYAGES_PERSONNALISES)) {
+      return res.status(400).json({ message: `Le nombre de voyages personnalisé doit être un entier compris entre 1 et ${MAX_VOYAGES_PERSONNALISES}.` });
     }
 
     const dateDebut = new Date();
@@ -55,6 +50,16 @@ exports.attribuerAbonnement = async (req, res) => {
       ? -1
       : (voyages_personnalises ?? type.voyages_initiaux ?? 0);
 
+    // Pour une formule "Limité" avec un nombre de voyages personnalisé, le montant facturé
+    // est recalculé au prorata du tarif unitaire de la formule (tarif de base / voyages
+    // initiaux par défaut), afin qu'un client qui choisit plus ou moins de voyages paie en
+    // conséquence plutôt que le tarif fixe prévu pour la quantité par défaut.
+    let montant = type.tarif;
+    if (voyages_personnalises !== undefined && type.voyages_initiaux) {
+      const prixUnitaire = type.tarif / type.voyages_initiaux;
+      montant = Math.round(prixUnitaire * voyages_personnalises * 100) / 100;
+    }
+
     const nouvelAbonnement = await Abonnement.create({
       user_id,
       type_abonnement_id,
@@ -62,7 +67,8 @@ exports.attribuerAbonnement = async (req, res) => {
       date_expiration: dateExpiration,
       voyages_restants: voyagesRestants,
       voyages_consommes: 0,
-      statut: 'Actif'
+      statut: 'Actif',
+      montant_paye: montant
     });
 
     logger.info(`Nouvel abonnement attribué : ${nouvelAbonnement.id} pour l'utilisateur ${user_id}. Formule : ${type.nom}`);

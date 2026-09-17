@@ -44,6 +44,11 @@ const Abonnement = sequelize.define('Abonnement', {
     type: DataTypes.ENUM('Actif', 'Suspendu', 'Résilie'),
     defaultValue: 'Actif',
     allowNull: false
+  },
+  montant_paye: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Montant facturé pour cet abonnement (recalculé au prorata si le nombre de voyages a été personnalisé)'
   }
 }, {
   tableName: 'abonnements',

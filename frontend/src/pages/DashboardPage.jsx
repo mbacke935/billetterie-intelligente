@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { getStatsBilletterie } from '../services/apiBilletterie';
+import { getStatsAbonnements } from '../services/apiAbonnements';
 import StatsCard from '../components/StatsCard';
-import { ShieldCheck, UserCog, Users, Ticket, XCircle } from 'lucide-react';
+import { ShieldCheck, UserCog, Users, Ticket, XCircle, CreditCard } from 'lucide-react';
 
 const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [statsBilletterie, setStatsBilletterie] = useState(null);
   const [erreurBilletterie, setErreurBilletterie] = useState('');
+  const [statsAbonnements, setStatsAbonnements] = useState(null);
+  const [erreurAbonnements, setErreurAbonnements] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
     fetchStatsBilletterie();
+    fetchStatsAbonnements();
   }, []);
 
   const fetchStats = async () => {
@@ -40,6 +44,20 @@ const DashboardPage = () => {
     }
   };
 
+  const fetchStatsAbonnements = async () => {
+    try {
+      const response = await getStatsAbonnements();
+      setStatsAbonnements(response.data);
+    } catch (error) {
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        setErreurAbonnements("Vous n'avez pas les droits nécessaires pour consulter les statistiques du Service Abonnements.");
+      } else {
+        setErreurAbonnements('Service Abonnements momentanément injoignable : impossible de récupérer les statistiques des abonnements. Vérifiez que le service (port 5001) et sa base de données sont bien démarrés.');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-loading">
@@ -50,6 +68,7 @@ const DashboardPage = () => {
   }
 
   const indicateursBilletterie = statsBilletterie?.indicateurs;
+  const indicateursAbonnements = statsAbonnements?.indicateurs;
 
   return (
     <div className="dashboard-page">
@@ -185,6 +204,98 @@ const DashboardPage = () => {
                 </div>
               </div>
             )}
+          </>
+        )}
+      </section>
+
+      {/* Service Abonnements : formules souscrites et voyages consommés */}
+      <section className="dashboard-section">
+        <h2 className="section-title">
+          <CreditCard size={20} /> Service Abonnements
+        </h2>
+        <p className="page-subtitle" style={{ marginTop: '-10px', marginBottom: '16px' }}>
+          Abonnements souscrits par les clients, répartition par formule et par statut
+        </p>
+
+        {erreurAbonnements ? (
+          <div className="alert alert-error">{erreurAbonnements}</div>
+        ) : (
+          <>
+            <div className="stats-grid">
+              <div className="stats-card" style={{ borderLeft: '4px solid #1C7293' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#1C7293' }}>
+                    {indicateursAbonnements?.total_abonnements ?? 0}
+                  </span>
+                  <span className="stats-card-label">Abonnements créés</span>
+                </div>
+              </div>
+              <div className="stats-card" style={{ borderLeft: '4px solid #02C39A' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#02C39A' }}>
+                    {indicateursAbonnements?.total_clients_uniques ?? 0}
+                  </span>
+                  <span className="stats-card-label">Clients abonnés</span>
+                </div>
+              </div>
+              <div className="stats-card" style={{ borderLeft: '4px solid #DD6B20' }}>
+                <div className="stats-card-content">
+                  <span className="stats-card-count" style={{ color: '#DD6B20' }}>
+                    {indicateursAbonnements?.somme_voyages_consommes_declaratifs ?? 0}
+                  </span>
+                  <span className="stats-card-label">Voyages consommés</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: '1rem',
+              marginTop: '1rem',
+            }}>
+              {statsAbonnements?.repartition_par_statut?.length > 0 && (
+                <div style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '1rem 1.5rem',
+                }}>
+                  <p style={{ margin: '0 0 0.75rem 0', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                    Répartition par statut
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {statsAbonnements.repartition_par_statut.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        <span>{s.statut}</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{s.total}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {statsAbonnements?.repartition_par_formule?.length > 0 && (
+                <div style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '1rem 1.5rem',
+                }}>
+                  <p style={{ margin: '0 0 0.75rem 0', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                    Répartition par formule
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {statsAbonnements.repartition_par_formule.map((f, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        <span>{f.type_nom}</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{f.total}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         )}
       </section>
