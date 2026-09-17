@@ -8,7 +8,7 @@ const logger = require('../config/logger');
 exports.listerAudit = async (req, res) => {
   try {
     const {
-      utilisateur_id, type_action, resultat,
+      utilisateur_id, type_action, resultat, role,
       date_min, date_max, page = 1, limit = 20,
     } = req.query;
 
@@ -16,6 +16,7 @@ exports.listerAudit = async (req, res) => {
     if (utilisateur_id) whereClause.utilisateur_id = utilisateur_id;
     if (type_action) whereClause.type_action = type_action;
     if (resultat) whereClause.resultat = resultat;
+    if (role) whereClause.role = role;
     if (date_min || date_max) {
       whereClause.date_heure = {};
       if (date_min) whereClause.date_heure[Op.gte] = new Date(date_min);

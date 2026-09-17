@@ -31,7 +31,12 @@ const DashboardPage = () => {
       const response = await getStatsBilletterie();
       setStatsBilletterie(response.data);
     } catch (error) {
-      setErreurBilletterie('Service Billetterie indisponible.');
+      const status = error.response?.status;
+      if (status === 401 || status === 403) {
+        setErreurBilletterie("Vous n'avez pas les droits nécessaires pour consulter les statistiques du Service Billetterie.");
+      } else {
+        setErreurBilletterie('Service Billetterie momentanément injoignable : impossible de récupérer les statistiques des titres et validations. Vérifiez que le service (port 5002) et sa base de données sont bien démarrés.');
+      }
     }
   };
 
@@ -106,6 +111,9 @@ const DashboardPage = () => {
         <h2 className="section-title">
           <Ticket size={20} /> Service Billetterie
         </h2>
+        <p className="page-subtitle" style={{ marginTop: '-10px', marginBottom: '16px' }}>
+          Titres de transport générés et validations effectuées par les agents (données en direct)
+        </p>
 
         {erreurBilletterie ? (
           <div className="alert alert-error">{erreurBilletterie}</div>
@@ -133,7 +141,7 @@ const DashboardPage = () => {
                   <span className="stats-card-count" style={{ color: '#38A169' }}>
                     {indicateursBilletterie?.validations_autorisees ?? 0}
                   </span>
-                  <span className="stats-card-label">Voyages autorisés</span>
+                  <span className="stats-card-label">Validations autorisées</span>
                 </div>
               </div>
               <div className="stats-card" style={{ borderLeft: '4px solid #E53E3E' }}>
@@ -141,7 +149,7 @@ const DashboardPage = () => {
                   <span className="stats-card-count" style={{ color: '#E53E3E' }}>
                     {indicateursBilletterie?.validations_refusees ?? 0}
                   </span>
-                  <span className="stats-card-label">Voyages refusés</span>
+                  <span className="stats-card-label">Validations refusées</span>
                 </div>
               </div>
               <div className="stats-card" style={{ borderLeft: '4px solid #DD6B20' }}>
@@ -149,7 +157,7 @@ const DashboardPage = () => {
                   <span className="stats-card-count" style={{ color: '#DD6B20' }}>
                     {indicateursBilletterie?.taux_refus_pourcent ?? 0}%
                   </span>
-                  <span className="stats-card-label">Taux de refus</span>
+                  <span className="stats-card-label">Taux de refus (validations)</span>
                 </div>
               </div>
             </div>

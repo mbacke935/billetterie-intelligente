@@ -4,6 +4,7 @@ const logger = require('../config/logger');
 const { genererQrToken } = require('../utils/qrToken');
 const { enregistrerAudit } = require('../utils/auditLogger');
 const { obtenirUtilisateur } = require('../services/usersClient');
+const { obtenirAbonnement } = require('../services/abonnementsClient');
 
 const USER_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -12,10 +13,16 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 // déjà attribué côté Service Abonnements. Action sensible réservée aux administrateurs.
 exports.genererTitre = async (req, res) => {
   try {
-    const { client_id, abonnement_id, type_titre, date_expiration } = req.body;
+    const { abonnement_id } = req.body;
+    // Un client ne peut générer un titre que pour lui-même : on ignore tout client_id fourni
+    // et on force celui du token. Le type de titre et la date d'expiration sont, dans ce cas,
+    // toujours dérivés de l'abonnement réellement souscrit (jamais de ce que le client déclare),
+    // pour empêcher qu'il ne s'attribue une formule différente de celle achetée.
+    const client_id = req.user.role === 'client' ? req.user.id : req.body.client_id;
+    let { type_titre, date_expiration } = req.body;
 
-    if (!client_id || !abonnement_id || !type_titre) {
-      return res.status(400).json({ message: 'client_id, abonnement_id et type_titre sont requis.' });
+    if (!client_id || !abonnement_id) {
+      return res.status(400).json({ message: 'client_id et abonnement_id sont requis.' });
     }
     if (!USER_ID_REGEX.test(client_id)) {
       return res.status(400).json({ message: 'Format de client_id invalide : identifiant du Service Utilisateurs attendu (24 caractères hexadécimaux).' });
@@ -23,6 +30,26 @@ exports.genererTitre = async (req, res) => {
     if (!UUID_REGEX.test(abonnement_id)) {
       return res.status(400).json({ message: 'Format d\'abonnement_id invalide : UUID attendu.' });
     }
+
+    if (req.user.role === 'client') {
+      let abonnement;
+      try {
+        abonnement = await obtenirAbonnement(abonnement_id, req.token);
+      } catch (error) {
+        return res.status(503).json({ message: 'Le Service Abonnements est momentanément indisponible.' });
+      }
+      if (!abonnement || abonnement.user_id !== client_id) {
+        return res.status(403).json({ message: 'Accès refusé : cet abonnement ne vous appartient pas.' });
+      }
+      type_titre = abonnement.typeAbonnement?.nom;
+      date_expiration = abonnement.date_expiration;
+
+      const dejaExistant = await TitreTransport.findOne({ where: { abonnement_id } });
+      if (dejaExistant) {
+        return res.status(409).json({ message: 'Un titre de transport existe déjà pour cet abonnement.' });
+      }
+    }
+
     if (!['Ticket simple', 'Limité', 'Illimité'].includes(type_titre)) {
       return res.status(400).json({ message: 'type_titre invalide.' });
     }
@@ -120,6 +147,9 @@ exports.obtenirTitre = async (req, res) => {
     if (!titre) {
       return res.status(404).json({ message: 'Titre de transport non trouvé.' });
     }
+    if (req.user.role === 'client' && req.user.id !== titre.client_id) {
+      return res.status(403).json({ message: 'Accès refusé : ce titre de transport ne vous appartient pas.' });
+    }
     res.status(200).json(titre);
   } catch (error) {
     logger.error(`Erreur lors de la récupération du titre ${req.params.id} :`, error);
@@ -141,6 +171,9 @@ exports.obtenirTitreParAbonnement = async (req, res) => {
     if (!titre) {
       return res.status(404).json({ message: 'Aucun titre de transport trouvé pour cet abonnement.' });
     }
+    if (req.user.role === 'client' && req.user.id !== titre.client_id) {
+      return res.status(403).json({ message: 'Accès refusé : ce titre de transport ne vous appartient pas.' });
+    }
     res.status(200).json(titre);
   } catch (error) {
     logger.error(`Erreur lors de la récupération du titre pour l'abonnement ${req.params.abonnement_id} :`, error);
@@ -157,6 +190,9 @@ exports.genererQrCode = async (req, res) => {
     const titre = await TitreTransport.findByPk(req.params.id);
     if (!titre) {
       return res.status(404).json({ message: 'Titre de transport non trouvé.' });
+    }
+    if (req.user.role === 'client' && req.user.id !== titre.client_id) {
+      return res.status(403).json({ message: 'Accès refusé : ce titre de transport ne vous appartient pas.' });
     }
 
     const qrData = genererQrToken(titre.id);

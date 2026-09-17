@@ -1,24 +1,17 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, UserCircle, CreditCard, MapPin, ScanLine } from 'lucide-react';
 
-const Sidebar = () => {
-  const menuItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/utilisateurs', label: 'Utilisateurs', icon: Users },
-    { path: '/abonnements', label: 'Abonnements', icon: CreditCard },
-    { path: '/voyages', label: 'Voyages', icon: MapPin },
-    { path: '/scan', label: 'Scanner un ticket', icon: ScanLine },
-    { path: '/profile', label: 'Mon Profil', icon: UserCircle },
-  ];
-
+// `items` : liste de { path, label, icon } propre à l'espace (client/agent/admin) qui
+// englobe ce Sidebar — chaque espace a sa propre navigation, cf. Prompt A.
+const Sidebar = ({ items }) => {
   return (
     <aside className="sidebar">
       <nav className="sidebar-nav">
         <ul className="sidebar-menu">
-          {menuItems.map((item) => (
+          {items.map((item) => (
             <li key={item.path} className="sidebar-menu-item">
               <NavLink
                 to={item.path}
+                end={item.end}
                 className={({ isActive }) =>
                   `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
                 }

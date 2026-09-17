@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Ticket, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { homePathForRole } from '../utils/roles';
 
 const parseError = (err) => {
   const message = err.response?.data?.message || '';
@@ -47,7 +48,7 @@ const LoginPage = () => {
       if (data?.premiereConnexion) {
         navigate('/changer-mot-de-passe');
       } else {
-        navigate('/');
+        navigate(homePathForRole(data?.user?.role));
       }
     } catch (err) {
       const parsed = parseError(err);

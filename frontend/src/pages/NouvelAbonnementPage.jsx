@@ -95,7 +95,7 @@ const NouvelAbonnementPage = () => {
       }
 
       setSuccess('Abonnement créé avec succès !');
-      setTimeout(() => navigate('/abonnements'), 1500);
+      setTimeout(() => navigate('/admin/abonnements'), 1500);
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de la création.');
     } finally {
@@ -147,7 +147,7 @@ const NouvelAbonnementPage = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button
             className="btn btn-secondary"
-            onClick={() => navigate('/abonnements')}
+            onClick={() => navigate('/admin/abonnements')}
             style={{ padding: '0.5rem' }}
           >
             <ArrowLeft size={18} />
@@ -314,7 +314,7 @@ const NouvelAbonnementPage = () => {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => navigate('/abonnements')}
+              onClick={() => navigate('/admin/abonnements')}
             >
               Annuler
             </button>

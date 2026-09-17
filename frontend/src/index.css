@@ -216,9 +216,10 @@ button, input, select, textarea {
 .navbar-title {
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #fff, var(--text-secondary));
+  background: linear-gradient(135deg, var(--text-primary), var(--primary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .navbar-user {
@@ -349,7 +350,7 @@ button, input, select, textarea {
 }
 
 .sidebar-link-active {
-  color: white;
+  color: var(--primary);
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.05));
   border-left: 3px solid var(--primary);
 }
@@ -578,6 +579,7 @@ button, input, select, textarea {
 }
 
 .ticket-card-body {
+  flex: 1;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
@@ -655,7 +657,7 @@ button, input, select, textarea {
 }
 
 .dashboard-role-section {
-  background-color: rgba(22, 27, 38, 0.3);
+  background-color: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 24px;
@@ -1429,4 +1431,11 @@ select.form-input {
 .app-main {
   flex: 1;
   overflow-y: auto;
+}
+
+/* Espace Agent : pas de sidebar, l'écran de scan doit occuper tout l'espace disponible
+   (interface plein écran épurée, optimisée mobile/tablette). */
+.app-main-full {
+  padding: 0;
+  background: var(--bg-primary);
 }

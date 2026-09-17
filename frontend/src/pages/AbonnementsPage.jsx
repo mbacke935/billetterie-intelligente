@@ -204,7 +204,7 @@ const AbonnementsPage = () => {
           </button>
           <button
             className="btn btn-primary"
-            onClick={() => navigate('/abonnements/nouveau')}
+            onClick={() => navigate('/admin/abonnements/nouveau')}
           >
             <Plus size={16} /> Nouvel abonnement
           </button>
@@ -251,7 +251,7 @@ const AbonnementsPage = () => {
             <option value="">Tous</option>
             <option value="actif">Actif</option>
             <option value="suspendu">Suspendu</option>
-            <option value="resilié">Résilié</option>
+            <option value="resilié">Résilié / Annulé</option>
           </select>
         </div>
       </div>
@@ -262,7 +262,7 @@ const AbonnementsPage = () => {
           { label: 'Total', count: statsGlobal?.indicateurs?.total_abonnements ?? 0, color: '#1C7293' },
           { label: 'Actifs', count: compterParStatut('Actif'), color: '#38A169' },
           { label: 'Suspendus', count: compterParStatut('Suspendu'), color: '#DD6B20' },
-          { label: 'Résiliés', count: compterParStatut('Résilie'), color: '#E53E3E' },
+          { label: 'Résiliés / Annulés', count: compterParStatut('Résilie'), color: '#E53E3E' },
         ].map((s) => (
           <div key={s.label} className="stats-card" style={{ borderLeft: `4px solid ${s.color}` }}>
             <div className="stats-card-content">

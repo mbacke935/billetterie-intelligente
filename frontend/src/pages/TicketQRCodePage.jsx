@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { ArrowLeft, Download, Printer } from 'lucide-react';
 import { getAbonnementById } from '../services/apiAbonnements';
 import { getTitreParAbonnement, getTitreQrCode } from '../services/apiBilletterie';
+import { useAuth } from '../context/AuthContext';
 
 const typeLabels = {
   'Ticket simple': 'Ticket Simple',
@@ -14,6 +15,10 @@ const typeLabels = {
 const TicketQRCodePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // La page est partagée entre l'espace Admin (/admin/abonnements/:id/qrcode) et l'espace
+  // Client (/client/titres/:id/qrcode) : le retour dépend donc du rôle courant.
+  const backPath = user?.role === 'client' ? '/client/titres' : '/admin/abonnements';
   const [abonnement, setAbonnement] = useState(null);
   const [titre, setTitre] = useState(null);
   const [qrData, setQrData] = useState(null);
@@ -75,7 +80,7 @@ const TicketQRCodePage = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button
             className="btn btn-secondary"
-            onClick={() => navigate('/abonnements')}
+            onClick={() => navigate(backPath)}
             style={{ padding: '0.5rem' }}
           >
             <ArrowLeft size={18} />
@@ -102,7 +107,7 @@ const TicketQRCodePage = () => {
 
         {/* Carte ticket */}
         <div style={{
-          background: 'var(--bg-card, #1e293b)',
+          background: 'var(--bg-secondary)',
           borderRadius: '16px',
           padding: '2rem',
           width: '320px',
@@ -127,7 +132,7 @@ const TicketQRCodePage = () => {
             }}>
               {typeLabels[abonnement.typeAbonnement?.nom] || 'Ticket'}
             </div>
-            <p style={{ margin: 0, color: '#64748B', fontSize: '0.8rem' }}>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
               Billetterie Intelligente
             </p>
           </div>
@@ -162,22 +167,22 @@ const TicketQRCodePage = () => {
           </div>
 
           {/* Infos */}
-          <div style={{ width: '100%', fontSize: '0.85rem', color: '#94A3B8' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid #334155' }}>
+          <div style={{ width: '100%', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--border-color)' }}>
               <span>ID Ticket</span>
-              <span style={{ color: '#CBD5E1', fontSize: '0.75rem' }}>{titre?.id?.slice(0, 8)}...</span>
+              <span style={{ color: 'var(--text-primary)', fontSize: '0.75rem' }}>{titre?.id?.slice(0, 8)}...</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid #334155' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--border-color)' }}>
               <span>Type</span>
-              <span style={{ color: '#CBD5E1' }}>{abonnement.typeAbonnement?.nom}</span>
+              <span style={{ color: 'var(--text-primary)' }}>{abonnement.typeAbonnement?.nom}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid #334155' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--border-color)' }}>
               <span>Début</span>
-              <span style={{ color: '#CBD5E1' }}>{abonnement.date_debut?.split('T')[0]}</span>
+              <span style={{ color: 'var(--text-primary)' }}>{abonnement.date_debut?.split('T')[0]}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid #334155' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--border-color)' }}>
               <span>Expiration</span>
-              <span style={{ color: '#CBD5E1' }}>{abonnement.date_expiration?.split('T')[0]}</span>
+              <span style={{ color: 'var(--text-primary)' }}>{abonnement.date_expiration?.split('T')[0]}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0' }}>
               <span>Voyages restants</span>

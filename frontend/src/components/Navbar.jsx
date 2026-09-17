@@ -3,7 +3,9 @@ import { useTheme } from '../context/ThemeContext';
 import { LogOut, User, Ticket, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const Navbar = () => {
+// `profilePath` : chemin du profil propre à l'espace courant (client/agent/admin),
+// puisque chaque espace a son propre préfixe de route (cf. Prompt A).
+const Navbar = ({ profilePath = '/profile' }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ const Navbar = () => {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
-        <div className="navbar-user-info" onClick={() => navigate('/profile')}>
+        <div className="navbar-user-info" onClick={() => navigate(profilePath)}>
           <div className="navbar-avatar">
             {user?.photo ? (
               <img src={user.photo} alt="avatar" className="navbar-avatar-img" />

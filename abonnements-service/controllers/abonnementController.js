@@ -8,7 +8,11 @@ const USER_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 // Attribuer un abonnement à un utilisateur
 exports.attribuerAbonnement = async (req, res) => {
   try {
-    const { user_id, type_abonnement_id, voyages_personnalises } = req.body;
+    // Un client ne peut s'abonner que pour lui-même : on ignore tout user_id fourni dans
+    // le corps de la requête et on force celui du token, pour empêcher un client d'acheter
+    // un abonnement au nom d'un autre utilisateur.
+    const user_id = req.user.role === 'client' ? req.user.id : req.body.user_id;
+    const { type_abonnement_id, voyages_personnalises } = req.body;
 
     if (!user_id || !type_abonnement_id) {
       return res.status(400).json({ message: 'user_id et type_abonnement_id sont requis.' });
@@ -23,6 +27,13 @@ exports.attribuerAbonnement = async (req, res) => {
     }
     if (!type.actif) {
       return res.status(400).json({ message: 'Cette formule d\'abonnement a été archivée et ne peut plus être attribuée.' });
+    }
+
+    // La personnalisation du nombre de voyages est une action de gestion réservée à
+    // l'administrateur : un client qui s'abonne lui-même reçoit toujours la valeur par
+    // défaut de la formule choisie.
+    if (voyages_personnalises !== undefined && req.user.role === 'client') {
+      return res.status(403).json({ message: 'Seul un administrateur peut personnaliser le nombre de voyages accordés.' });
     }
 
     // Pour une formule "Limité", l'administrateur peut personnaliser le nombre de
@@ -192,6 +203,12 @@ exports.resilierAbonnement = async (req, res) => {
 exports.getAbonnementsByUser = async (req, res) => {
   try {
     const { user_id } = req.params;
+
+    // Un client ne peut consulter que ses propres abonnements.
+    if (req.user.role === 'client' && req.user.id !== user_id) {
+      return res.status(403).json({ message: 'Accès refusé : vous ne pouvez consulter que vos propres abonnements.' });
+    }
+
     const { statut, type_abonnement_id } = req.query;
 
     const whereClause = { user_id };
@@ -224,6 +241,11 @@ exports.getAbonnementById = async (req, res) => {
 
     if (!abonnement) {
       return res.status(404).json({ message: 'Abonnement non trouvé.' });
+    }
+
+    // Un client ne peut consulter que ses propres abonnements.
+    if (req.user.role === 'client' && req.user.id !== abonnement.user_id) {
+      return res.status(403).json({ message: 'Accès refusé : cet abonnement ne vous appartient pas.' });
     }
 
     res.status(200).json(abonnement);

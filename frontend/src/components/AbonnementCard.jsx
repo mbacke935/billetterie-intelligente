@@ -17,12 +17,16 @@ const typeColors = {
   abonnement_illimite: '#02C39A',
 };
 
-// Configuration visuelle (couleur texte, couleur fond, texte affiché) des badges selon le statut
+// Configuration visuelle (couleur texte, couleur fond, texte affiché) des badges selon le statut.
+// Le libellé du statut "resilié" dépend du type de titre : un ticket simple à usage unique
+// est "Annulé" (il n'y a pas de contrat à résilier), alors qu'un abonnement est bien "Résilié".
 const statutBadge = {
   actif: { color: '#38A169', bg: '#DCFCE7', label: 'Actif' },
   suspendu: { color: '#DD6B20', bg: '#FEF3C7', label: 'Suspendu' },
   resilié: { color: '#E53E3E', bg: '#FEE2E2', label: 'Résilié' },
 };
+
+const labelStatutResilie = (type) => (type === 'ticket_simple' ? 'Annulé' : 'Résilié');
 
 // Seuil en dessous duquel la jauge de voyages restants passe en couleur d'alerte
 const SEUIL_VOYAGES_FAIBLE = 2;
@@ -56,13 +60,19 @@ const formatCompteARebours = (dateExpirationStr) => {
   return `Expire dans ${minutes}min`;
 };
 
-// Composant principal représentant la carte d'un abonnement ou d'un ticket
-const AbonnementCard = ({ abonnement, onSuspendre, onResilier, onRenouveler }) => {
+// Composant principal représentant la carte d'un abonnement ou d'un ticket.
+// `qrBasePath` : préfixe de route vers la page QR Code, différent selon l'espace qui
+// affiche la carte (/admin/abonnements en gestion, /client/titres côté passager).
+// `readOnly` : masque les actions de gestion (suspendre/annuler/résilier/renouveler),
+// utilisé dans l'espace Client où un passager consulte ses titres sans les administrer.
+const AbonnementCard = ({ abonnement, onSuspendre, onResilier, onRenouveler, qrBasePath = '/admin/abonnements', readOnly = false }) => {
   // Initialisation du hook pour la redirection vers la page du QR code
   const navigate = useNavigate();
 
-  // Récupération de la configuration du badge selon le statut (repli sur 'actif' par défaut)
+  // Récupération de la configuration du badge selon le statut (repli sur 'actif' par défaut) ;
+  // le libellé "resilié" est précisé selon le type de titre (ticket vs abonnement).
   const badge = statutBadge[abonnement.statut] || statutBadge.actif;
+  const badgeLabel = abonnement.statut === 'resilié' ? labelStatutResilie(abonnement.type) : badge.label;
   // Récupération de la couleur associée au type d'abonnement (couleur par défaut si non trouvé)
   const typeColor = typeColors[abonnement.type] || '#1C7293';
 
@@ -96,7 +106,7 @@ const AbonnementCard = ({ abonnement, onSuspendre, onResilier, onRenouveler }) =
             color: badge.color,
             background: badge.bg,
           }}>
-            {badge.label}
+            {badgeLabel}
           </span>
         </div>
 
@@ -169,19 +179,24 @@ const AbonnementCard = ({ abonnement, onSuspendre, onResilier, onRenouveler }) =
         <button
           className="btn btn-primary"
           style={{ fontSize: '0.78rem', padding: '0.4rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
-          onClick={() => navigate(`/abonnements/${abonnement.id}/qrcode`)}
+          onClick={() => navigate(`${qrBasePath}/${abonnement.id}/qrcode`)}
         >
           <QrCode size={14} /> Voir QR Code
         </button>
 
-        {/* Ticket simple : titre à usage unique, ni suspension ni renouvellement n'ont de sens */}
+        {/* Actions de gestion (suspendre/annuler/résilier/renouveler) : masquées côté
+            Client, qui consulte ses titres sans les administrer. */}
+        {!readOnly && (
+        <>
+        {/* Ticket simple : titre à usage unique, ni suspension ni renouvellement n'ont de sens.
+            On "annule" un ticket, on ne "résilie" pas un contrat qui n'existe pas. */}
         {estTicketSimple && estActif && (
           <button
             className="btn btn-danger"
             style={{ width: '100%', fontSize: '0.78rem', padding: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
             onClick={() => onResilier(abonnement.id)}
           >
-            <XCircle size={14} /> Résilier
+            <XCircle size={14} /> Annuler
           </button>
         )}
 
@@ -225,6 +240,8 @@ const AbonnementCard = ({ abonnement, onSuspendre, onResilier, onRenouveler }) =
           >
             <CheckCircle size={14} /> Renouveler
           </button>
+        )}
+        </>
         )}
       </div>
     </div>

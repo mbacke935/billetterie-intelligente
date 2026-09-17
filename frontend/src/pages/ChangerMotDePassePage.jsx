@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { homePathForRole } from '../utils/roles';
 
 const ChangerMotDePassePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     nouveauMotDePasse: '',
     confirmerMotDePasse: '',
@@ -39,7 +42,7 @@ const ChangerMotDePassePage = () => {
       await api.put('/profile/password', {
         nouveauMotDePasse: formData.nouveauMotDePasse,
       });
-      navigate('/');
+      navigate(homePathForRole(user?.role));
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors du changement.');
     } finally {

@@ -15,7 +15,10 @@ const obtenirAbonnement = async (abonnementId, token) => {
     });
     return data;
   } catch (error) {
-    if (error.response?.status === 404) return null;
+    // 404 (inexistant) et 403 (appartient à un autre utilisateur, cf. contrôle d'accès
+    // propre au Service Abonnements) sont traités de la même façon ici : cet abonnement
+    // n'est pas accessible à l'appelant avec ce token.
+    if (error.response?.status === 404 || error.response?.status === 403) return null;
     logger.error(`Erreur de communication avec le Service Abonnements (GET /abonnements/${abonnementId}) :`, error.message);
     throw new Error('SERVICE_ABONNEMENTS_INDISPONIBLE');
   }

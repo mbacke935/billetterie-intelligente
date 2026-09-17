@@ -195,8 +195,12 @@ exports.listerValidations = async (req, res) => {
 // GET /api/validations/client/:client_id - Historique des passages d'un client donné
 exports.listerValidationsParClient = async (req, res) => {
   try {
+    if (req.user.role === 'client' && req.user.id !== req.params.client_id) {
+      return res.status(403).json({ message: 'Accès refusé : vous ne pouvez consulter que votre propre historique.' });
+    }
     const validations = await Validation.findAll({
       where: { client_id: req.params.client_id },
+      include: { model: TitreTransport, as: 'titre' },
       order: [['date_validation', 'DESC']],
     });
     res.status(200).json(validations);
