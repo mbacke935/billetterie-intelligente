@@ -1,46 +1,27 @@
-name: Node.js CI
-
+name: CI Backend Billetterie
 on:
-  push:
-    branches: [ "main", "master", "dev" ]
-  pull_request:
-    branches: [ "main", "master", "dev" ]
-
+push:
+branches: [main, develop]
+pull_request:
+branches: [main, develop]
 jobs:
-  test-backend:
-    runs-on: ubuntu-latest
-
-    # Démarrage d'un vrai service MongoDB
-    services:
-      mongodb:
-        image: mongo:6.0
-        ports:
-          - 27017:27017
-
-    defaults:
-      run:
-        working-directory: ./backend
-
-    steps:
-      # 1. Récupération du code
-      - name: Checkout du code
-        uses: actions/checkout@v4
-
-      # 2. Configuration Node.js (Node 22)
-      - name: Configuration de Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: './backend/package-lock.json'
-
-      # 3. Installation des dépendances npm
-      - name: Installation des dépendances
-        run: npm install
-
-      # 4. Exécution des tests avec contournement complet du binaire mongodb-memory-server
-      - name: Exécution des tests backend
-        env:
-          MONGOMS_SYSTEM_BINARY: /usr/bin/mongod
-          MONGO_URI: mongodb://127.0.0.1:27017/testdb
-        run: npm test
+test-backend:
+runs-on: ubuntu-latest
+defaults:
+run:
+working-directory: backend
+steps:
+- name: Récupérer le code
+uses: actions/checkout@v4
+- name: Installer Node.js
+uses: actions/setup-node@v4
+with:
+node-version: 22
+- name: Installer les dépendances
+run: npm ci
+- name: Lancer les tests
+run: npm test
+env:
+NODE_ENV: development
+JWT_SECRET: ma_cle_secrete_jwt_2024
+MONGO_URI: mongodb+srv://mbackem500_db_user:admin123@cluster0.kpgikt5.mongodb.net/billetterie?retryWrites=true&w=majority&appName=Cluster0

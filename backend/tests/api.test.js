@@ -1,7 +1,6 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
 
@@ -19,17 +18,22 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
     const testUserEmail = 'user.test@test.sn';
 
     beforeAll(async () => {
-        // 1. Démarre le serveur MongoDB virtuel en mémoire
-        mongod = await MongoMemoryServer.create();
-        const uri = mongod.getUri();
+        let uri = process.env.MONGO_URI;
 
-        // 2. Connexion de Mongoose au serveur en mémoire
+        // Si aucune variable MONGO_URI n'est passée (ex: en local), on utilise MongoMemoryServer
+        if (!uri) {
+            const { MongoMemoryServer } = require('mongodb-memory-server');
+            mongod = await MongoMemoryServer.create();
+            uri = mongod.getUri();
+        }
+
+        // Connexion de Mongoose (Atlas ou In-Memory)
         await mongoose.connect(uri);
 
-        // 3. Nettoyage initial de la base de données
+        // Nettoyage initial de la base de données
         await User.deleteMany({ email: /.*@test\.sn$/ });
 
-        // 4. Créer un compte administrateur de test actif
+        // Créer un compte administrateur de test actif
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
         await User.create({
             nom: 'Admin',
@@ -41,7 +45,7 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
             statut: 'actif'
         });
 
-        // 5. Authentification pour récupérer le jeton JWT
+        // Authentification pour récupérer le jeton JWT
         const res = await request(app)
             .post('/api/auth/login')
             .send({
@@ -53,12 +57,12 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
     });
 
     afterAll(async () => {
-        // Nettoyage et fermeture propre de Mongoose et du serveur en mémoire
+        // Nettoyage et fermeture propre
         if (mongoose.connection.readyState !== 0) {
             await User.deleteMany({ email: /.*@test\.sn$/ });
-            await mongoose.connection.dropDatabase();
             await mongoose.connection.close();
         }
+        // N'arrête le serveur en mémoire que s'il a été instancié
         if (mongod) {
             await mongod.stop();
         }
