@@ -19,18 +19,18 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      # 2. Configuration de l'environnement Node.js
+      # 2. Configuration de l'environnement Node.js (Node 22)
       - name: Configuration de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: './backend/package-lock.json'
 
       # 3. Installation des dépendances
       - name: Installation des dépendances
-        run: npm ci
+        run: npm install
 
-      # 4. Exécution de la suite de tests Jest
+      # 4. Exécution des tests Jest
       - name: Exécution des tests backend
         run: npm test
