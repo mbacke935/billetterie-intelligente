@@ -1,9 +1,11 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const User = require('../models/User');
+
+// Mocker l'envoi d'emails pour éviter d'appeler un vrai serveur SMTP pendant les tests
+jest.mock('../utils/sendEmail', () => jest.fn().mockResolvedValue(true));
 
 let token;
 let mongod;
@@ -14,11 +16,20 @@ let mongod;
 beforeAll(async () => {
   jest.setTimeout(30000);
 
-  // 1. Démarrage du serveur MongoDB virtuel en mémoire
-  mongod = await MongoMemoryServer.create();
-  const uri = mongod.getUri();
+  let uri = process.env.MONGO_URI;
 
-  // 2. Connexion Mongoose au serveur virtuel
+  if (uri) {
+    // Base de test dédiée : évite d'écraser la base de dev pointée par le même
+    // MONGO_URI (afterAll fait un dropDatabase()).
+    uri = uri.replace(/(\/[^/?]+)(\?|$)/, '$1_test$2');
+  } else {
+    // Si MONGO_URI n'est pas définie (exécution en local), démarrer MongoMemoryServer
+    const { MongoMemoryServer } = require('mongodb-memory-server');
+    mongod = await MongoMemoryServer.create();
+    uri = mongod.getUri();
+  }
+
+  // Connexion Mongoose
   await mongoose.connect(uri);
 
   // 3. Nettoyage : supprimer les comptes de test s'ils existent déjà

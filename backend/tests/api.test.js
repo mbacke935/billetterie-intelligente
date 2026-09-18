@@ -21,8 +21,12 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
     beforeAll(async () => {
         let uri = process.env.MONGO_URI;
 
-        // Si MONGO_URI n'est pas définie (exécution en local), importer et démarrer MongoMemoryServer
-        if (!uri) {
+        if (uri) {
+            // Base de test dédiée : évite d'écraser la base de dev pointée par le même
+            // MONGO_URI (afterAll fait un dropDatabase()).
+            uri = uri.replace(/(\/[^/?]+)(\?|$)/, '$1_test$2');
+        } else {
+            // Si MONGO_URI n'est pas définie (exécution en local), importer et démarrer MongoMemoryServer
             const { MongoMemoryServer } = require('mongodb-memory-server');
             mongod = await MongoMemoryServer.create();
             uri = mongod.getUri();
