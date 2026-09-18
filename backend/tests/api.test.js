@@ -1,15 +1,17 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
-const connectDB = require('../config/db');
 const User = require('../models/User');
 
-// Mocker l'envoi d'emails pour éviter d'envoyer des courriels réels et bloquer les tests
+// Mocker l'envoi d'emails pour éviter d'envoyer des courriels réels
 jest.mock('../utils/sendEmail', () => jest.fn().mockResolvedValue(true));
 
 describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
-    jest.setTimeout(30000); // 30 secondes pour les opérations lentes (Atlas)
+    jest.setTimeout(30000);
+    
+    let mongod;
     let adminToken;
     let createdUserId;
     const adminEmail = 'admin.test@test.sn';
@@ -17,13 +19,17 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
     const testUserEmail = 'user.test@test.sn';
 
     beforeAll(async () => {
-        // Connexion à MongoDB (nécessaire car ce fichier peut s'exécuter avant users.test.js)
-        await connectDB();
+        // 1. Démarre le serveur MongoDB virtuel en mémoire
+        mongod = await MongoMemoryServer.create();
+        const uri = mongod.getUri();
 
-        // Nettoyer les anciens utilisateurs de test de la base de données
+        // 2. Connexion de Mongoose au serveur en mémoire
+        await mongoose.connect(uri);
+
+        // 3. Nettoyage initial de la base de données
         await User.deleteMany({ email: /.*@test\.sn$/ });
 
-        // Créer un compte administrateur de test actif
+        // 4. Créer un compte administrateur de test actif
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
         await User.create({
             nom: 'Admin',
@@ -35,7 +41,7 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
             statut: 'actif'
         });
 
-        // Se connecter pour obtenir le token JWT
+        // 5. Authentification pour récupérer le jeton JWT
         const res = await request(app)
             .post('/api/auth/login')
             .send({
@@ -47,10 +53,15 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
     });
 
     afterAll(async () => {
-        // Nettoyer tous les comptes de test créés
-        await User.deleteMany({ email: /.*@test\.sn$/ });
-        // Fermer la connexion MongoDB pour permettre à Jest de se terminer
-        await mongoose.connection.close();
+        // Nettoyage et fermeture propre de Mongoose et du serveur en mémoire
+        if (mongoose.connection.readyState !== 0) {
+            await User.deleteMany({ email: /.*@test\.sn$/ });
+            await mongoose.connection.dropDatabase();
+            await mongoose.connection.close();
+        }
+        if (mongod) {
+            await mongod.stop();
+        }
     });
 
     describe('POST /api/auth/login', () => {
@@ -126,7 +137,7 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
             expect(res.status).toBe(201);
             expect(res.body).toHaveProperty('user');
             expect(res.body.user.email).toBe(testUserEmail);
-            expect(res.body.user.statut).toBe('bloque'); // bloqué par défaut
+            expect(res.body.user.statut).toBe('bloque');
             expect(res.body.user).not.toHaveProperty('motDePasse');
 
             createdUserId = res.body.user.id || res.body.user._id;
@@ -139,7 +150,7 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
                 .send({
                     nom: 'Doublon',
                     prenom: 'Test',
-                    email: testUserEmail, // même email
+                    email: testUserEmail,
                     telephone: '775556677',
                     role: 'agent',
                     motDePasse: 'TempPassword123!'
@@ -159,7 +170,7 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
             expect(res.status).toBe(200);
             expect(res.body).toHaveProperty('total');
             expect(res.body).toHaveProperty('users');
-            expect(res.body.total).toBeGreaterThanOrEqual(2); // admin + utilisateur créé
+            expect(res.body.total).toBeGreaterThanOrEqual(2);
         });
 
         test('devrait filtrer par rôle', async () => {
@@ -194,7 +205,6 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
             expect(res.body.user.statut).toBe('actif');
             expect(res.body.message).toMatch(/activé/i);
 
-            // Vérifier que l'utilisateur est maintenant bien 'actif' en BDD
             const updatedUser = await User.findById(createdUserId);
             expect(updatedUser.statut).toBe('actif');
         });
@@ -209,7 +219,6 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
             expect(res.status).toBe(200);
             expect(res.body.user.statut).toBe('supprime');
 
-            // Vérifier en BDD : le compte existe toujours, mais à la corbeille
             const trashedUser = await User.findById(createdUserId);
             expect(trashedUser).not.toBeNull();
             expect(trashedUser.statut).toBe('supprime');

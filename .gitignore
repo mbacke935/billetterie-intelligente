@@ -1,12 +1,13 @@
-# Node modules
+# Dépendances
 node_modules/
 **/node_modules/
 
-# Environment variables
+# Variables d'environnement
 .env
+.env.local
 **/.env
 
-# IDE / System files
+# IDE / Système
 .vscode/
 .idea/
 .DS_Store
@@ -16,14 +17,17 @@ node_modules/
 *.sln
 *.sw?
 
-# Uploads and temporary files
-backend/uploads/
-*.log
-abonnements-service/logs/
-billetterie-service/logs/
-
-# Build output
-frontend/dist/
+# Builds
 dist/
 build/
+**/dist/
+**/build/
+
+# Tests & Logs
 coverage/
+*.log
+npm-debug.log*
+**/logs/
+
+# Uploads
+backend/uploads/
