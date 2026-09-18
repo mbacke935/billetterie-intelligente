@@ -10,10 +10,6 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: ./backend
-
     steps:
       # 1. Récupération du code source
       - name: Checkout du code
@@ -35,10 +31,12 @@ jobs:
 
       # 4. Installation des packages npm
       - name: Installation des dépendances npm
+        working-directory: ./backend
         run: npm install
 
-      # 5. Exécution des tests avec forçage de la version MongoDB Binary
+      # 5. Exécution des tests Jest
       - name: Exécution des tests backend
+        working-directory: ./backend
         env:
           MONGOMS_VERSION: '6.0.6'
         run: npm test
