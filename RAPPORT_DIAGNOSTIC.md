@@ -167,3 +167,38 @@ Au moment de pousser, `origin/main` avait avancé de 9 commits indépendants (pr
 **Résolution :** fusion (`git merge origin/main`) en conservant le meilleur des deux versions : l'approche `mongodb-memory-server` pour `backend` (plus robuste, aucun secret Mongo requis), les jobs `test-abonnements-service`/`test-billetterie-service`/`build-frontend` ajoutés dans cette session, et un `.gitignore`/`.env.example` nettoyés (valeurs vides, pas de secrets en clair). Voir le commit de merge pour le détail des conflits résolus.
 
 Grâce à `mongodb-memory-server`, le job `test-backend` n'a plus besoin du secret `MONGO_URI_TEST` ni d'un accès réseau vers Atlas depuis les runners GitHub Actions — un point qui aurait autrement nécessité de vérifier le Network Access de MongoDB Atlas (`0.0.0.0/0`).
+
+---
+
+## 8. Étape 6 du TP — Pipeline échoué puis corrigé (preuve GitHub Actions)
+
+L'exercice demandé (casser volontairement une assertion, pousser, observer l'échec, corriger, repousser, obtenir un pipeline vert) a été réalisé directement sur GitHub :
+
+**Run #18 « test1 » — commit [`4ab0d2d`](https://github.com/mbacke935/billetterie-intelligente/commit/4ab0d2d) — ❌ Échec**
+```diff
+- expect(password).toHaveLength(8);
++ expect(password).toHaveLength(99);
+```
+Log du job `Tests - Service Utilisateurs (backend)` :
+```
+FAIL tests/generatePassword.test.js
+✕ devrait générer un mot de passe de 8 caractères par défaut (3 ms)
+
+  expect(received).toHaveLength(expected)
+  Expected length: 99
+  Received length: 8
+  Received string: "HsFzvzqk"
+
+Tests: 1 failed, 21 passed, 22 total
+Error: Process completed with exit code 1.
+```
+Diagnostic : `generatePassword()` génère par défaut un mot de passe de 8 caractères (comportement correct, voir `backend/utils/generatePassword.js`) ; c'est l'assertion du test qui a été modifiée par erreur (99 au lieu de 8).
+
+**Run #19 « test2 » — commit [`7ea1c7b`](https://github.com/mbacke935/billetterie-intelligente/commit/7ea1c7b) — ✅ Succès**
+```diff
+- expect(password).toHaveLength(99);
++ expect(password).toHaveLength(8);
+```
+Assertion restaurée à sa valeur correcte → les 4 jobs passent, pipeline vert.
+
+Voir l'onglet [Actions](https://github.com/mbacke935/billetterie-intelligente/actions) du dépôt pour les captures d'écran de ces deux runs (livrables « Capture d'un pipeline échoué » / « Capture d'un pipeline réussi »).
