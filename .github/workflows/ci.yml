@@ -10,7 +10,7 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
 
-    # Service MongoDB conteneurisé
+    # Démarrage d'un vrai service MongoDB
     services:
       mongodb:
         image: mongo:6.0
@@ -26,20 +26,21 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      # 2. Configuration Node.js 20
+      # 2. Configuration Node.js (Node 22)
       - name: Configuration de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: './backend/package-lock.json'
 
       # 3. Installation des dépendances npm
       - name: Installation des dépendances
-        run: npm ci
+        run: npm install
 
-      # 4. Exécution des tests avec la variable d'environnement MONGO_URI
+      # 4. Exécution des tests avec contournement complet du binaire mongodb-memory-server
       - name: Exécution des tests backend
         env:
-          MONGO_URI: mongodb://localhost:27017/testdb
+          MONGOMS_SYSTEM_BINARY: /usr/bin/mongod
+          MONGO_URI: mongodb://127.0.0.1:27017/testdb
         run: npm test
