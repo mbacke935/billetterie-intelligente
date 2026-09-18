@@ -1,4 +1,4 @@
-const { Abonnement, TypeAbonnement, sequelize } = require('../models');
+  const { Abonnement, TypeAbonnement, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../config/logger');
 
