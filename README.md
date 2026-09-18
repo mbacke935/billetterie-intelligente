@@ -45,7 +45,7 @@ cd abonnements-service && npm test
 cd billetterie-service && npm test
 ```
 
-- `backend` a besoin d'une base MongoDB accessible (voir `MONGO_URI` dans `.env`).
+- `backend` démarre son propre MongoDB en mémoire pour les tests (`mongodb-memory-server`) : aucune base externe requise.
 - `abonnements-service` a besoin d'une base MySQL nommée `<DB_NAME>_test` en environnement de test.
 - `billetterie-service` a besoin d'une base PostgreSQL nommée `<DB_NAME>_test` en environnement de test.
 
@@ -55,7 +55,7 @@ Le pipeline `.github/workflows/ci.yml` s'exécute à chaque `push`/`pull_request
 
 | Job | Rôle |
 |---|---|
-| `test-backend` | Installe et teste le Service Utilisateurs (connexion à `secrets.MONGO_URI_TEST`) |
+| `test-backend` | Teste le Service Utilisateurs (MongoDB via `mongodb-memory-server`, pas de base externe) |
 | `test-abonnements-service` | Teste le Service Abonnements avec un conteneur MySQL éphémère |
 | `test-billetterie-service` | Teste le Service Billetterie avec un conteneur PostgreSQL éphémère |
 | `build-frontend` | Vérifie que le frontend compile (`npm run build`) |
@@ -66,13 +66,11 @@ Le pipeline `.github/workflows/ci.yml` s'exécute à chaque `push`/`pull_request
 
 | Secret | Utilité |
 |---|---|
-| `MONGO_URI_TEST` | Connexion à la base MongoDB de test utilisée par `backend` |
 | `JWT_SECRET` | Secret partagé de signature/vérification des JWT entre les 3 services |
-| `EMAIL_USER` / `EMAIL_PASS` | Identifiants email (l'envoi est mocké dans les tests, non strictement requis) |
 | `VITE_API_URL` | Réservé pour une future configuration par environnement du frontend (non consommé par le code actuel) |
 | `QR_SECRET` (optionnel) | Clé HMAC de signature des QR Codes pour `billetterie-service` (a une valeur par défaut de secours) |
 
-⚠️ La base pointée par `MONGO_URI_TEST` doit être accessible depuis les runners GitHub Actions (vérifier le Network Access de MongoDB Atlas si `ETIMEOUT`/`querySrv` apparaît dans les logs).
+`MONGO_URI_TEST`, `EMAIL_USER`, `EMAIL_PASS` ne sont plus nécessaires : les tests backend sont hermétiques (base en mémoire, envoi d'email mocké).
 
 ## Variables d'environnement
 

@@ -155,4 +155,15 @@ Aucune variable d'environnement n'est requise : les URLs des services sont codé
 
 ## 6. Limite rencontrée dans cette session
 
-L'environnement d'exécution local utilisé pour ce diagnostic n'a **aucun accès réseau sortant** (DNS et ping bloqués), ce qui empêchait `backend` de joindre MongoDB Atlas (`querySrv ETIMEOUT`). Un conteneur MongoDB local a donc été utilisé pour valider les correctifs de test. **Ce n'est pas un problème du projet** : les runners GitHub Actions ont un accès internet complet, donc `secrets.MONGO_URI_TEST` devrait fonctionner en CI — à condition que le Network Access de MongoDB Atlas autorise les IP de GitHub Actions (`0.0.0.0/0` recommandé pour un cluster de test). Si le job `test-backend` échoue en CI avec une erreur `querySrv`/`ETIMEOUT` similaire, c'est le premier point à vérifier — c'est exactement le type de diagnostic demandé à l'Étape 6 du TP.
+L'environnement d'exécution local utilisé pour ce diagnostic n'a **aucun accès réseau sortant** (DNS et ping bloqués), ce qui empêchait `backend` de joindre MongoDB Atlas (`querySrv ETIMEOUT`). Un conteneur MongoDB local (puis un `mongod.exe` local) a donc été utilisé pour valider les correctifs de test.
+
+## 7. Fusion avec un travail parallèle sur `origin/main`
+
+Au moment de pousser, `origin/main` avait avancé de 9 commits indépendants (probablement une autre session travaillant sur le même TP) qui avaient déjà :
+- retiré `backend/.env` du suivi et ajouté un `.gitignore`/`backend/.env.example` (mais **`backend/.env.example` contenait les vraies valeurs secrètes** — mot de passe MongoDB Atlas et JWT_SECRET réels — recopiées telles quelles au lieu de champs vides : corrigé lors de la fusion) ;
+- corrigé les mêmes bugs de `backend/tests/*.test.js` avec une approche différente et plus robuste : `mongodb-memory-server` (chaque suite démarre son propre MongoDB en mémoire, sans dépendre d'Atlas ni d'un secret `MONGO_URI_TEST`) ;
+- mis en place un premier `ci.yml` ne couvrant que `backend`.
+
+**Résolution :** fusion (`git merge origin/main`) en conservant le meilleur des deux versions : l'approche `mongodb-memory-server` pour `backend` (plus robuste, aucun secret Mongo requis), les jobs `test-abonnements-service`/`test-billetterie-service`/`build-frontend` ajoutés dans cette session, et un `.gitignore`/`.env.example` nettoyés (valeurs vides, pas de secrets en clair). Voir le commit de merge pour le détail des conflits résolus.
+
+Grâce à `mongodb-memory-server`, le job `test-backend` n'a plus besoin du secret `MONGO_URI_TEST` ni d'un accès réseau vers Atlas depuis les runners GitHub Actions — un point qui aurait autrement nécessité de vérifier le Network Access de MongoDB Atlas (`0.0.0.0/0`).
