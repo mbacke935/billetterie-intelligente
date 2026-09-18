@@ -11,10 +11,6 @@ jobs:
     name: Tests - Service Utilisateurs (backend)
     runs-on: ubuntu-latest
 
-    # Conservé de l'historique CI : les tests démarrent leur propre MongoDB via
-    # mongodb-memory-server (voir backend/tests/*.test.js). MONGOMS_SYSTEM_BINARY
-    # pointe vers le mongod fourni par ce service container, pour éviter que
-    # mongodb-memory-server ne tente de télécharger son propre binaire.
     services:
       mongodb:
         image: mongo:6.0
@@ -44,7 +40,6 @@ jobs:
         env:
           NODE_ENV: test
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          MONGOMS_SYSTEM_BINARY: /usr/bin/mongod
           MONGO_URI: mongodb://127.0.0.1:27017/testdb
 
   test-abonnements-service:
@@ -159,6 +154,4 @@ jobs:
       - name: Construire le frontend
         run: npm run build
         env:
-          # Non consommée par le code actuel (URLs codées en dur dans src/services/*.js),
-          # conservée pour la conformité avec le TP et une future configuration par environnement.
           VITE_API_URL: ${{ secrets.VITE_API_URL }}

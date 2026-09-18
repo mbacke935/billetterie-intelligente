@@ -1,3 +1,4 @@
+// backend/tests/users.test.js
 const request = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
