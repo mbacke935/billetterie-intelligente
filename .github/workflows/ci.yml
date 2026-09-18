@@ -19,24 +19,26 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
-      # 2. Configuration de l'environnement Node.js (Node 20 spécifié explicitement)
+      # 2. Configuration de Node.js 22
       - name: Configuration de Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: './backend/package-lock.json'
 
-      # 3. Installation des dépendances système nécessaires pour mongodb-memory-server
+      # 3. Installation des dépendances système Linux pour MongoDB
       - name: Installation des dépendances système
         run: |
           sudo apt-get update
           sudo apt-get install -y libcurl4 libssl-dev
 
-      # 4. Installation des dépendances Node.js
+      # 4. Installation des packages npm
       - name: Installation des dépendances npm
         run: npm install
 
-      # 5. Exécution des tests Jest
+      # 5. Exécution des tests avec forçage de la version MongoDB Binary
       - name: Exécution des tests backend
+        env:
+          MONGOMS_VERSION: '6.0.6'
         run: npm test
