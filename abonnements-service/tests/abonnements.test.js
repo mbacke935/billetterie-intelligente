@@ -75,16 +75,20 @@ describe('Tests d\'intégration du Service Abonnements', () => {
   describe('Abonnement Logic', () => {
     let typeAbonnement;
     let createdAbonnementId;
+    // Attribution, suspension et renouvellement sont réservés aux administrateurs
+    // (cf. routes/abonnementRoutes.js) : un token 'agent' y serait refusé avec 403.
+    let adminToken;
     const testUserId = '507f191e810c19729de860ea'; // format ObjectId Mongo (24 hex) attendu du Service Utilisateurs
 
     beforeAll(async () => {
       typeAbonnement = await TypeAbonnement.findOne({ where: { nom: 'Ticket simple' } });
+      adminToken = jwt.sign({ id: 'admin-1', role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
     });
 
     test('devrait attribuer un abonnement à un utilisateur', async () => {
       const res = await request(app)
         .post('/api/abonnements')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           user_id: testUserId,
           type_abonnement_id: typeAbonnement.id
@@ -100,7 +104,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     test('devrait refuser un user_id au format invalide', async () => {
       const res = await request(app)
         .post('/api/abonnements')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           user_id: 'pas-un-objectid-valide',
           type_abonnement_id: typeAbonnement.id
@@ -121,7 +125,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     test('devrait suspendre un abonnement', async () => {
       const res = await request(app)
         .put(`/api/abonnements/${createdAbonnementId}/suspendre`)
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${adminToken}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body.abonnement.statut).toEqual('Suspendu');
     });
@@ -129,7 +133,7 @@ describe('Tests d\'intégration du Service Abonnements', () => {
     test('devrait renouveler et réactiver un abonnement', async () => {
       const res = await request(app)
         .put(`/api/abonnements/${createdAbonnementId}/renouveler`)
-        .set('Authorization', `Bearer ${token}`);
+        .set('Authorization', `Bearer ${adminToken}`);
       expect(res.statusCode).toEqual(200);
       expect(res.body.abonnement.statut).toEqual('Actif');
       expect(res.body.abonnement.voyages_restants).toEqual(1);

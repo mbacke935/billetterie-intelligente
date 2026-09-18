@@ -1,7 +1,11 @@
 const request = require('supertest');
-const { app, connectDB } = require('../server');
+const app = require('../server');
+const connectDB = require('../config/db');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+
+// Mocker l'envoi d'emails pour éviter d'appeler un vrai serveur SMTP pendant les tests
+jest.mock('../utils/sendEmail', () => jest.fn().mockResolvedValue(true));
 
 let token;
 
@@ -89,7 +93,7 @@ it('TC-004 : admin peut créer un utilisateur → 201', async () => {
     });
 
   expect(res.status).toBe(201);
-  expect(res.body.message).toBe('Utilisateur créé avec succès.');
+  expect(res.body.message).toBe('Utilisateur créé avec succès. Le compte doit être activé par un administrateur.');
   expect(res.body.user.email).toBe('supertest@test.com');
 });
 

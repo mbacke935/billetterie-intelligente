@@ -2,6 +2,7 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const app = require('../server');
+const connectDB = require('../config/db');
 const User = require('../models/User');
 
 // Mocker l'envoi d'emails pour éviter d'envoyer des courriels réels et bloquer les tests
@@ -16,6 +17,9 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
     const testUserEmail = 'user.test@test.sn';
 
     beforeAll(async () => {
+        // Connexion à MongoDB (nécessaire car ce fichier peut s'exécuter avant users.test.js)
+        await connectDB();
+
         // Nettoyer les anciens utilisateurs de test de la base de données
         await User.deleteMany({ email: /.*@test\.sn$/ });
 
