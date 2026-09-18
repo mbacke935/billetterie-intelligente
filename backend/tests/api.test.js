@@ -5,8 +5,8 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 // Importation de bcrypt pour le hachage et la vérification des mots de passe
 const bcrypt = require('bcrypt');
-// Importation de MongoMemoryServer pour exécuter une instance MongoDB en mémoire pendant les tests
-const { MongoMemoryServer } = require('mongodb-memory-server');
+// Chargement de l'application Express (déclenche dotenv.config(), d'où le MONGO_URI lu plus bas)
+const app = require('../server');
 // Importation du modèle User pour interagir directement avec la collection des utilisateurs
 const User = require('../models/User');
 
@@ -20,7 +20,6 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
     
     // Déclaration des variables globales au bloc de tests
     let mongod;
-    let app;
     let adminToken;
     let createdUserId;
     const adminEmail = 'admin.test@test.sn';
@@ -42,15 +41,13 @@ describe('Tests d\'intégration de l\'API - Billetterie Intelligente', () => {
             uri = uri.replace(/(\/[^/?]+)(\?|$)/, '$1_test$2');
         } else {
             // Si MONGO_URI n'est pas définie (exécution en local), démarrer MongoMemoryServer
+            const { MongoMemoryServer } = require('mongodb-memory-server');
             mongod = await MongoMemoryServer.create();
             uri = mongod.getUri();
         }
 
         // Connexion de Mongoose à la base de données
         await mongoose.connect(uri);
-
-        // Chargement de l'application Express après la connexion à la base
-        app = require('../server');
 
         // Suppression de tous les anciens utilisateurs de test utilisant le domaine @test.sn
         await User.deleteMany({ email: /.*@test\.sn$/ });
