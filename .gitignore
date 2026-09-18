@@ -16,3 +16,5 @@ npm-debug.log*
 
 # Système
 .DS_Store
+# Logs des microservices
+**/logs/
