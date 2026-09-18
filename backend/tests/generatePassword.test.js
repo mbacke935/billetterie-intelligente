@@ -4,7 +4,7 @@ describe('Test unitaire - generatePassword', () => {
     test('devrait générer un mot de passe de 8 caractères par défaut', () => {
         const password = generatePassword();
         expect(password).toBeDefined();
-        expect(password).toHaveLength(99);
+        expect(password).toHaveLength(8);
         expect(typeof password).toBe('string');
     });
 
