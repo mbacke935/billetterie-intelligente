@@ -1,3 +1,9 @@
+// backend/tests/users.test.js
+// Mock de l'envoi d'email pour éviter les erreurs SMTP pendant les tests
+jest.mock('../utils/sendEmail', () => jest.fn().mockResolvedValue(true));
+
+// ... reste du code de tests/users.test.js ...
+
 const request = require('supertest');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
