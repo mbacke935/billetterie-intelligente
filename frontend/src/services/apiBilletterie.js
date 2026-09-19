@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiBilletterie = axios.create({
-  baseURL: 'http://localhost:5002/api',
+  baseURL: `${import.meta.env.VITE_BILLETTERIE_API_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
 });
 
