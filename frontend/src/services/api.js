@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// Utilise la variable d'environnement définie sur Vercel ou un fallback sur /api (ou localhost:8000) en local
+const baseURL = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api` 
+  : '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },

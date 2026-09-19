@@ -1,0 +1,31 @@
+# Version du format Docker Compose utilisé
+version: '3.8'
+
+# Définition des services (conteneurs) à lancer ensemble
+services:
+  # Service de la base de données MongoDB
+  mongo:
+    image: mongo:7 # Utilise l'image officielle MongoDB version 7
+    container_name: billetterie-mongo # Nom attribué au conteneur MongoDB
+    ports:
+      - "27017:27017" # Mappe le port 27017 de la machine hôte vers le conteneur
+    volumes:
+      - mongo_data:/data/db # Persiste les données de la base dans un volume nommé
+
+  # Service du backend de l'application
+  backend:
+    build: ./backend # Indique que l'image doit être construite à partir du dossier backend
+    container_name: billetterie-backend # Nom attribué au conteneur backend
+    ports:
+      - "8000:8000" # Mappe le port 8000 de la machine vers le conteneur
+    environment:
+      PORT: 8000 # Définit le port d'écoute de l'API dans le conteneur
+      MONGO_URI: mongodb://mongo:27017/billetterie # URL de connexion pointant vers le service mongo ci-dessus
+      JWT_SECRET: secret_dev # Clé secrète pour les tokens JWT en développement
+      NODE_ENV: development # Définit l'environnement d'exécution
+    depends_on:
+      - mongo # Attend que le service mongo soit démarré avant de lancer le backend
+
+# Déclaration des volumes persistants
+volumes:
+  mongo_data: # Volume pour stocker les données MongoDB de manière permanente
