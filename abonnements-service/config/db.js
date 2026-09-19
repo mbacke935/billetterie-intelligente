@@ -7,18 +7,12 @@ const dbName = process.env.NODE_ENV === 'test'
 
 const sequelize = new Sequelize(
   dbName,
-  process.env.DB_USER || 'postgres',
+  process.env.DB_USER || 'root',
   process.env.DB_PASSWORD || '',
   {
     host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    dialect: 'postgres',
-    dialectOptions: process.env.NODE_ENV === 'production' ? {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
-    } : {},
+    port: process.env.DB_PORT || 3306,
+    dialect: 'mysql',
     logging: false, // Désactiver les logs SQL verbeux en test/prod pour la clarté
     pool: {
       max: 5,
@@ -34,9 +28,9 @@ const logger = require('./logger');
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    logger.info('Connexion à la base de données PostgreSQL établie avec succès.');
+    logger.info('Connexion à la base de données MySQL établie avec succès.');
   } catch (error) {
-    logger.error('Impossible de se connecter à la base de données PostgreSQL :', error);
+    logger.error('Impossible de se connecter à la base de données MySQL :', error);
     process.exit(1);
   }
 };
